@@ -757,8 +757,10 @@ function buildKeyboard(x, z, baseY){
 }
 const danceHalfW = (W-4)/2;
 const danceMidZ = (danceZStart+danceZEnd)/2;
-interiorGroup.add(buildDrumKit(-danceHalfW+1.6, danceMidZ, 0.39));  // left end
-interiorGroup.add(buildKeyboard( danceHalfW-1.6, danceMidZ, 0.39)); // right end
+// instruments live ON the stage, tucked toward the back so they don't block the pulpit
+const bandZ = stageZEnd - 2.6;
+interiorGroup.add(buildDrumKit(-(W/2 - 4.5), bandZ, stageHeight));
+interiorGroup.add(buildKeyboard( (W/2 - 4.5), bandZ, stageHeight));
 
 // individual chairs within a block (rows of single chairs, not benches)
 function addChairBlock(xStart, blockW){
