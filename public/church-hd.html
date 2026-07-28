@@ -1010,9 +1010,13 @@ function updateAutoTour(now){
 
 // resize
 window.addEventListener('resize', ()=>{
-  camera.aspect = wrap.clientWidth/wrap.clientHeight;
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  camera.aspect = w/h;
   camera.updateProjectionMatrix();
-  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
+  ssao.setSize(w, h);
+  bloom.setSize(w, h);
 });
 
 function animate(){
