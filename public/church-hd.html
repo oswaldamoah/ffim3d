@@ -778,7 +778,7 @@ function addChairBlock(xStart, blockW){
       // seat
       interiorGroup.add(box(chairW, seatH, rowDepth, pewMat, cx, baseY + seatH/2, z, false));
       // backrest, set at the rear edge of the seat
-      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z + rowDepth/2 - backT/2, false));
+      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z - rowDepth/2 + backT/2, false));
     }
     z += gap + rowDepth;
   }
@@ -841,7 +841,7 @@ function addChairBlockTiered(xStart, blockW, zStart, zEnd){
     for(let i=0;i<nChairs;i++){
       const cx = firstX + i * pitch;
       interiorGroup.add(box(chairW, seatH, rowDepth, pewMat, cx, baseY + seatH/2, z, false));
-      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z + rowDepth/2 - backT/2, false));
+      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z - rowDepth/2 + backT/2, false));
     }
     z += gap + rowDepth;
   }
