@@ -238,14 +238,14 @@ composer.addPass(new OutputPass());
 const sun = new THREE.DirectionalLight(0xffe6c2, 1.6);
 sun.position.set(45, 70, 35);
 sun.castShadow = true;
-sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
 sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
 sun.shadow.camera.near = 1; sun.shadow.camera.far = 220;
 sun.shadow.bias = -0.00015;
 sun.shadow.normalBias = 0.04;
-sun.shadow.radius = 8;
-sun.shadow.blurSamples = 24;
+sun.shadow.radius = 6;
+sun.shadow.blurSamples = 8;
 scene.add(sun);
 // Sky/ground bounce for realistic ambient tint (VSM-friendly).
 scene.add(new THREE.HemisphereLight(0xa8c4dc, 0x4a3f2e, 0.18));
