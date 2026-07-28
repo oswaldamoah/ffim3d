@@ -1206,14 +1206,16 @@ function stopAutoTour(){
   if(!autoTourOn) return;
   autoTourOn = false;
   btnTour.classList.remove('on');
-  btnTour.innerHTML = '&#9654; Auto Tour';
+  btnTour.innerHTML = '&#9654;';
+  btnTour.title = 'Auto tour';
 }
 
 btnTour.onclick = ()=>{
   autoTourOn = !autoTourOn;
   if(autoTourOn){
     btnTour.classList.add('on');
-    btnTour.innerHTML = '&#10074;&#10074; Auto Tour';
+    btnTour.innerHTML = '&#10074;&#10074;';
+    btnTour.title = 'Stop auto tour';
     startAutoTour();
   } else {
     stopAutoTour();
