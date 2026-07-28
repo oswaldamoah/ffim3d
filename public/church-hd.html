@@ -185,14 +185,14 @@ function tintFromNoise(size, seed, freq, r,g,b, variance){
 
 // A cached PBR map set per surface archetype.
 const pbr = {
-  plaster: { n: normalFromHeight(512, 11, 8,  1.4), r: roughFromNoise(512, 11, 6,  0.86, 0.18), repeat: 6 },
-  stone:   { n: normalFromHeight(512, 22, 14, 2.2), r: roughFromNoise(512, 22, 10, 0.80, 0.28), repeat: 4 },
-  roof:    { n: normalFromHeight(512, 33, 22, 2.8), r: roughFromNoise(512, 33, 14, 0.70, 0.20), repeat: 8 },
-  wood:    { n: normalFromHeight(1024, 44, 6,  1.0), r: roughFromNoise(1024, 44, 4,  0.55, 0.24), repeat: 3 },
-  marble:  { n: normalFromHeight(1024, 55, 5,  0.5), r: roughFromNoise(1024, 55, 3,  0.28, 0.10), repeat: 4 },
-  fabric:  { n: normalFromHeight(512, 66, 30, 1.2), r: roughFromNoise(512, 66, 20, 0.75, 0.14), repeat: 3 },
-  metal:   { n: normalFromHeight(512, 77, 18, 0.6), r: roughFromNoise(512, 77, 8,  0.40, 0.20), repeat: 5 },
-  grass:   { n: normalFromHeight(512, 88, 40, 2.0), r: roughFromNoise(512, 88, 30, 0.95, 0.12), repeat: 24 },
+  plaster: { n: normalFromHeight(256, 11, 8,  1.4), r: roughFromNoise(256, 11, 6,  0.86, 0.18), repeat: 6 },
+  stone:   { n: normalFromHeight(256, 22, 14, 2.2), r: roughFromNoise(256, 22, 10, 0.80, 0.28), repeat: 4 },
+  roof:    { n: normalFromHeight(256, 33, 22, 2.8), r: roughFromNoise(256, 33, 14, 0.70, 0.20), repeat: 8 },
+  wood:    { n: normalFromHeight(512, 44, 6,  1.0), r: roughFromNoise(512, 44, 4,  0.55, 0.24), repeat: 3 },
+  marble:  { n: normalFromHeight(512, 55, 5,  0.5), r: roughFromNoise(512, 55, 3,  0.28, 0.10), repeat: 4 },
+  fabric:  { n: normalFromHeight(256, 66, 30, 1.2), r: roughFromNoise(256, 66, 20, 0.75, 0.14), repeat: 3 },
+  metal:   { n: normalFromHeight(256, 77, 18, 0.6), r: roughFromNoise(256, 77, 8,  0.40, 0.20), repeat: 5 },
+  grass:   { n: normalFromHeight(256, 88, 40, 2.0), r: roughFromNoise(256, 88, 30, 0.95, 0.12), repeat: 24 },
 };
 function applyPbr(mat, kind){
   const p = pbr[kind]; if(!p) return mat;
