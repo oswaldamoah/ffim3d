@@ -590,13 +590,13 @@ function buildAnnex(){
 exteriorGroup.add(buildAnnex());
 
 // ===================== INTERIOR =====================
-const floorMat = new THREE.MeshStandardMaterial({ color:0xcbb593, roughness:0.7, metalness:0.03 });
-const aisleMat = new THREE.MeshStandardMaterial({ color:0xc9a05a, roughness:0.6, metalness:0.03 });
-const danceMat = new THREE.MeshStandardMaterial({ color:0xb2536e, roughness:0.45, metalness:0.05 });
-const stageMat = new THREE.MeshStandardMaterial({ color:0x7b5ba3, roughness:0.5, metalness:0.08 });
-const pewMat = new THREE.MeshPhysicalMaterial({ color:0x8a6a4a, roughness:0.45, metalness:0.04, clearcoat:0.25, clearcoatRoughness:0.5 });
-const galleryMat = new THREE.MeshStandardMaterial({ color:0x4d7ea8, roughness:0.55, metalness:0.05 });
-const railMat = new THREE.MeshStandardMaterial({ color:0x2a2a2a, roughness:0.35, metalness:0.85 });
+const floorMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xb8a17f, roughness:0.75, metalness:0.03 }), 'marble');
+const aisleMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xb89354, roughness:0.65, metalness:0.03 }), 'fabric');
+const danceMat = applyPbr(new THREE.MeshStandardMaterial({ color:0x9a4560, roughness:0.5, metalness:0.05 }), 'marble');
+const stageMat = applyPbr(new THREE.MeshStandardMaterial({ color:0x6a4d90, roughness:0.55, metalness:0.08 }), 'fabric');
+const pewMat = applyPbr(new THREE.MeshPhysicalMaterial({ color:0x7a5a3d, roughness:0.5, metalness:0.04, clearcoat:0.3, clearcoatRoughness:0.55 }), 'wood');
+const galleryMat = applyPbr(new THREE.MeshStandardMaterial({ color:0x3d6a94, roughness:0.6, metalness:0.05 }), 'wood');
+const railMat = applyPbr(new THREE.MeshStandardMaterial({ color:0x1e1e1e, roughness:0.32, metalness:0.9 }), 'metal');
 
 // base floor (whole footprint)
 interiorGroup.add(box(W-0.6, 0.3, L-0.6, floorMat, 0, 0.15, 0, false));
