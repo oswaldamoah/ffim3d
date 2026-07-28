@@ -811,15 +811,27 @@ function galleryTierY(z){
   return galleryLowestY;
 }
 
-// floor slab per tier
-tierPlatforms.forEach(t=>{
-  interiorGroup.add(box(W-2.4, 0.4, t.zEnd - t.zStart, galleryMat, 0, t.y, (t.zStart+t.zEnd)/2, false));
+// floor slab per tier. The first (topmost, backmost) tier sits above both
+// gallery staircases, so its slab is narrowed to leave open stair-wells on
+// each side; the wide slabs resume from the second tier onward.
+const stairWellW = 4.2; // clearance on each side for the stair to open through
+tierPlatforms.forEach((t, idx)=>{
+  const depth = t.zEnd - t.zStart;
+  const centerZ = (t.zStart+t.zEnd)/2;
+  if(idx === 0){
+    const centerW = W - 2*stairWellW;
+    interiorGroup.add(box(centerW, 0.4, depth, galleryMat, 0, t.y, centerZ, false));
+  } else {
+    interiorGroup.add(box(W-2.4, 0.4, depth, galleryMat, 0, t.y, centerZ, false));
+  }
 });
 
 // aisle strips overlaid on the tiers, in the same X positions as the ground floor aisles
 const galleryAisleXs = [xLeftWallAisle+aisleW/2, xAisle1+aisleW/2, xAisle2+aisleW/2, xRightWallAisle+aisleW/2];
-tierPlatforms.forEach(t=>{
+tierPlatforms.forEach((t, idx)=>{
   galleryAisleXs.forEach(ax=>{
+    // skip the outer two aisles on the topmost tier — those are now open stair-wells
+    if(idx === 0 && (ax === galleryAisleXs[0] || ax === galleryAisleXs[3])) return;
     interiorGroup.add(box(aisleW, 0.05, t.zEnd - t.zStart, aisleMat, ax, t.y + 0.23, (t.zStart+t.zEnd)/2, false));
   });
 });
