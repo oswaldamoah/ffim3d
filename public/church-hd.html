@@ -928,7 +928,7 @@ tierPlatforms.forEach((t, idx)=>{
 interiorGroup.add(box(W-2.4, 0.9, 0.15, railMat, 0, galleryLowestY+0.65, galleryFrontZ));
 
 // gallery seating: single chairs in the same 3 blocks/aisles as the ground floor, resting on their tier
-function addChairBlockTiered(xStart, blockW, zStart, zEnd){
+function addChairBlockTiered(xStart, blockW, zStart, zEnd, isOuter){
   const rowDepth = 0.5, gap = 0.75;
   const seatH = 0.45, backH = 0.55, backT = 0.08;
   const chairW = 0.55, chairGap = 0.2;
@@ -937,20 +937,26 @@ function addChairBlockTiered(xStart, blockW, zStart, zEnd){
   const usedW = nChairs * chairW + (nChairs - 1) * chairGap;
   const firstX = xStart + (blockW - usedW) / 2 + chairW / 2;
 
+  // topmost tier is the open stair-well zone on outer blocks — skip chairs
+  // whose z falls in that tier so seating never floats above the stairs.
+  const topTier = tierPlatforms[0];
+
   let z = zStart;
   while(z < zEnd){
-    const baseY = galleryTierY(z);
-    for(let i=0;i<nChairs;i++){
-      const cx = firstX + i * pitch;
-      interiorGroup.add(box(chairW, seatH, rowDepth, pewMat, cx, baseY + seatH/2, z, false));
-      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z - rowDepth/2 + backT/2, false));
+    if(!(isOuter && z >= topTier.zStart && z < topTier.zEnd)){
+      const baseY = galleryTierY(z);
+      for(let i=0;i<nChairs;i++){
+        const cx = firstX + i * pitch;
+        interiorGroup.add(box(chairW, seatH, rowDepth, pewMat, cx, baseY + seatH/2, z, false));
+        interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z - rowDepth/2 + backT/2, false));
+      }
     }
     z += gap + rowDepth;
   }
 }
-addChairBlockTiered(xBlock1, block1W, zBack+2, galleryFrontZ-1);
-addChairBlockTiered(xBlock2, block2W, zBack+2, galleryFrontZ-1);
-addChairBlockTiered(xBlock3, block3W, zBack+2, galleryFrontZ-1);
+addChairBlockTiered(xBlock1, block1W, zBack+2, galleryFrontZ-1, true);
+addChairBlockTiered(xBlock2, block2W, zBack+2, galleryFrontZ-1, false);
+addChairBlockTiered(xBlock3, block3W, zBack+2, galleryFrontZ-1, true);
 
 // support columns under the gallery (tallest at the back, shortest at the front where it's lowest)
 const gallerySupportsBack = [[W/2-3, zBack+1, galleryTopY]]
