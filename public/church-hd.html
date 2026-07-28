@@ -282,8 +282,8 @@ window.addEventListener('mouseup', ()=>{ dragging=false; panning=false; });
 window.addEventListener('mousemove', e=>{
   const dx = e.clientX-lastX, dy = e.clientY-lastY;
   if(dragging){
-    camAngleY -= dx*0.006;
-    camAngleX = Math.max(0.05, Math.min(1.4, camAngleX + dy*0.006));
+    camAngleY -= dx*0.014;
+    camAngleX = Math.max(0.05, Math.min(1.4, camAngleX + dy*0.014));
   } else if(panning){
     camTarget.x -= dx*0.05;
     camTarget.y += dy*0.05;
