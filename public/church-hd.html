@@ -82,7 +82,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
+// (SSAOPass import removed — pass disabled for performance)
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 const wrap = document.getElementById('canvas-wrap');
@@ -220,19 +220,15 @@ new RGBELoader()
     scene.environmentIntensity = 0.55;
   });
 
-// Post-processing composer: SSAO -> Bloom -> SMAA -> OutputPass.
+// Post-processing composer: Bloom -> SMAA -> OutputPass.
+// (SSAO removed — biggest per-frame cost; rotation feels much more responsive
+//  without it. Ambient occlusion is now approximated via baked roughness/normal
+//  maps and the hemisphere/IBL fill.)
 const composer = new EffectComposer(renderer);
-composer.setPixelRatio(Math.min(devicePixelRatio, 2));
+composer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 composer.setSize(wrap.clientWidth, wrap.clientHeight);
 composer.addPass(new RenderPass(scene, camera));
-const ssao = new SSAOPass(scene, camera, wrap.clientWidth, wrap.clientHeight);
-ssao.kernelRadius = 0.9;
-ssao.minDistance = 0.002;
-ssao.maxDistance = 0.12;
-ssao.output = SSAOPass.OUTPUT.Default;
-composer.addPass(ssao);
-// Subtler bloom: only genuine highlights bloom, keeps whites from blowing out.
-const bloom = new UnrealBloomPass(new THREE.Vector2(wrap.clientWidth, wrap.clientHeight), 0.18, 0.5, 0.95);
+const bloom = new UnrealBloomPass(new THREE.Vector2(wrap.clientWidth, wrap.clientHeight), 0.16, 0.5, 0.96);
 composer.addPass(bloom);
 composer.addPass(new SMAAPass(wrap.clientWidth * devicePixelRatio, wrap.clientHeight * devicePixelRatio));
 composer.addPass(new OutputPass());
@@ -242,14 +238,14 @@ composer.addPass(new OutputPass());
 const sun = new THREE.DirectionalLight(0xffe6c2, 1.6);
 sun.position.set(45, 70, 35);
 sun.castShadow = true;
-sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
 sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
 sun.shadow.camera.near = 1; sun.shadow.camera.far = 220;
 sun.shadow.bias = -0.00015;
 sun.shadow.normalBias = 0.04;
-sun.shadow.radius = 8;
-sun.shadow.blurSamples = 24;
+sun.shadow.radius = 6;
+sun.shadow.blurSamples = 8;
 scene.add(sun);
 // Sky/ground bounce for realistic ambient tint (VSM-friendly).
 scene.add(new THREE.HemisphereLight(0xa8c4dc, 0x4a3f2e, 0.18));
@@ -357,7 +353,27 @@ scene.add(exteriorGroup, interiorGroup);
 const wallMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xd6cdb8, roughness:0.88, metalness:0.02 }), 'plaster');
 const roofMat = applyPbr(new THREE.MeshStandardMaterial({ color:0x6a3229, roughness:0.72, metalness:0.05 }), 'roof');
 const trimMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xe8e2d4, roughness:0.62, metalness:0.02 }), 'plaster');
-const glassMat = new THREE.MeshPhysicalMaterial({ color:0xdfefff, roughness:0.02, metalness:0.0, transmission:0.98, thickness:0.35, ior:1.52, transparent:true, opacity:1.0, envMapIntensity:1.8, clearcoat:1.0, clearcoatRoughness:0.04, attenuationColor:0xd4e6f1, attenuationDistance:2.5, side:THREE.DoubleSide });
+// Realistic translucent stained/tinted glass without full transmission —
+// transmission does a per-frame refraction render that murders framerate on
+// mid-range GPUs. Instead we use a physically-based translucent surface with
+// alpha, a strong environment reflection, clearcoat, and a subtle emissive
+// tint so it reads as lit-from-behind glass at any time of day.
+const glassMat = new THREE.MeshPhysicalMaterial({
+  color: 0xbfd8e8,
+  roughness: 0.05,
+  metalness: 0.0,
+  transparent: true,
+  opacity: 0.35,
+  transmission: 0.0,
+  ior: 1.5,
+  envMapIntensity: 2.2,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.06,
+  emissive: 0x89b4d0,
+  emissiveIntensity: 0.18,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+});
 const doorMat = applyPbr(new THREE.MeshPhysicalMaterial({ color:0x4a2f1c, roughness:0.6, metalness:0.05, clearcoat:0.35, clearcoatRoughness:0.5 }), 'wood');
 
 function box(w,h,d,mat,x,y,z,castShadow=true){
@@ -429,15 +445,35 @@ function makeWallWithWindows(w,h,d,x,y,z, windowCount, axis){
   if(windowCount > 0){
     const winH = h*0.22, winSpan = axis==='x'? w/(windowCount*2.2) : d/(windowCount*2.2);
     const rowYs = [h*-0.2, h*0.3]; // downstairs row, then upstairs row (relative to wall centre)
+    // window depth is wall-thickness + a hair, so the pane pokes out on both
+    // faces and actually reads as a window instead of being buried in stone.
+    const paneDepth = Math.max(d, 0.6) + 0.08;
+    const frameT = 0.12;         // frame thickness (protrudes slightly)
+    const mullionT = 0.08;       // divider bar thickness
     rowYs.forEach(ry=>{
       for(let i=0;i<windowCount;i++){
         const t = (i+0.5)/windowCount - 0.5;
         if(axis==='x'){
           const wx = t*w*0.85;
-          g.add(box(winSpan,winH,d*0.4,glassMat, wx, ry, 0, false));
+          // glass pane
+          g.add(box(winSpan, winH, paneDepth, glassMat, wx, ry, 0, false));
+          // stone frame around the pane (top, bottom, sides)
+          g.add(box(winSpan+0.3, frameT, paneDepth+0.02, trimMat, wx, ry+winH/2+frameT/2, 0));
+          g.add(box(winSpan+0.3, frameT, paneDepth+0.02, trimMat, wx, ry-winH/2-frameT/2, 0));
+          g.add(box(frameT, winH+0.3, paneDepth+0.02, trimMat, wx-winSpan/2-frameT/2, ry, 0));
+          g.add(box(frameT, winH+0.3, paneDepth+0.02, trimMat, wx+winSpan/2+frameT/2, ry, 0));
+          // cross mullion
+          g.add(box(winSpan, mullionT, paneDepth+0.01, trimMat, wx, ry, 0));
+          g.add(box(mullionT, winH,   paneDepth+0.01, trimMat, wx, ry, 0));
         } else {
           const wz = t*d*0.85;
-          g.add(box(w*0.4,winH,winSpan,glassMat, 0, ry, wz, false));
+          g.add(box(paneDepth, winH, winSpan, glassMat, 0, ry, wz, false));
+          g.add(box(paneDepth+0.02, frameT, winSpan+0.3, trimMat, 0, ry+winH/2+frameT/2, wz));
+          g.add(box(paneDepth+0.02, frameT, winSpan+0.3, trimMat, 0, ry-winH/2-frameT/2, wz));
+          g.add(box(paneDepth+0.02, winH+0.3, frameT, trimMat, 0, ry, wz-winSpan/2-frameT/2));
+          g.add(box(paneDepth+0.02, winH+0.3, frameT, trimMat, 0, ry, wz+winSpan/2+frameT/2));
+          g.add(box(paneDepth+0.01, mullionT, winSpan, trimMat, 0, ry, wz));
+          g.add(box(paneDepth+0.01, winH, mullionT, trimMat, 0, ry, wz));
         }
       }
     });
@@ -892,7 +928,7 @@ tierPlatforms.forEach((t, idx)=>{
 interiorGroup.add(box(W-2.4, 0.9, 0.15, railMat, 0, galleryLowestY+0.65, galleryFrontZ));
 
 // gallery seating: single chairs in the same 3 blocks/aisles as the ground floor, resting on their tier
-function addChairBlockTiered(xStart, blockW, zStart, zEnd){
+function addChairBlockTiered(xStart, blockW, zStart, zEnd, isOuter){
   const rowDepth = 0.5, gap = 0.75;
   const seatH = 0.45, backH = 0.55, backT = 0.08;
   const chairW = 0.55, chairGap = 0.2;
@@ -901,20 +937,26 @@ function addChairBlockTiered(xStart, blockW, zStart, zEnd){
   const usedW = nChairs * chairW + (nChairs - 1) * chairGap;
   const firstX = xStart + (blockW - usedW) / 2 + chairW / 2;
 
+  // topmost tier is the open stair-well zone on outer blocks — skip chairs
+  // whose z falls in that tier so seating never floats above the stairs.
+  const topTier = tierPlatforms[0];
+
   let z = zStart;
   while(z < zEnd){
-    const baseY = galleryTierY(z);
-    for(let i=0;i<nChairs;i++){
-      const cx = firstX + i * pitch;
-      interiorGroup.add(box(chairW, seatH, rowDepth, pewMat, cx, baseY + seatH/2, z, false));
-      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z - rowDepth/2 + backT/2, false));
+    if(!(isOuter && z >= topTier.zStart && z < topTier.zEnd)){
+      const baseY = galleryTierY(z);
+      for(let i=0;i<nChairs;i++){
+        const cx = firstX + i * pitch;
+        interiorGroup.add(box(chairW, seatH, rowDepth, pewMat, cx, baseY + seatH/2, z, false));
+        interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z - rowDepth/2 + backT/2, false));
+      }
     }
     z += gap + rowDepth;
   }
 }
-addChairBlockTiered(xBlock1, block1W, zBack+2, galleryFrontZ-1);
-addChairBlockTiered(xBlock2, block2W, zBack+2, galleryFrontZ-1);
-addChairBlockTiered(xBlock3, block3W, zBack+2, galleryFrontZ-1);
+addChairBlockTiered(xBlock1, block1W, zBack+2, galleryFrontZ-1, true);
+addChairBlockTiered(xBlock2, block2W, zBack+2, galleryFrontZ-1, false);
+addChairBlockTiered(xBlock3, block3W, zBack+2, galleryFrontZ-1, true);
 
 // support columns under the gallery (tallest at the back, shortest at the front where it's lowest)
 const gallerySupportsBack = [[W/2-3, zBack+1, galleryTopY]]
@@ -1204,7 +1246,6 @@ window.addEventListener('resize', ()=>{
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
   composer.setSize(w, h);
-  ssao.setSize(w, h);
   bloom.setSize(w, h);
 });
 
