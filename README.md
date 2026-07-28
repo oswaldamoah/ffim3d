@@ -1,4 +1,4 @@
-# FFIM 3D
+# FFIM3D
 
 An interactive 3D church model for Flourishing Field International Ministries
 
