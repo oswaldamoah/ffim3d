@@ -220,19 +220,15 @@ new RGBELoader()
     scene.environmentIntensity = 0.55;
   });
 
-// Post-processing composer: SSAO -> Bloom -> SMAA -> OutputPass.
+// Post-processing composer: Bloom -> SMAA -> OutputPass.
+// (SSAO removed — biggest per-frame cost; rotation feels much more responsive
+//  without it. Ambient occlusion is now approximated via baked roughness/normal
+//  maps and the hemisphere/IBL fill.)
 const composer = new EffectComposer(renderer);
-composer.setPixelRatio(Math.min(devicePixelRatio, 2));
+composer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 composer.setSize(wrap.clientWidth, wrap.clientHeight);
 composer.addPass(new RenderPass(scene, camera));
-const ssao = new SSAOPass(scene, camera, wrap.clientWidth, wrap.clientHeight);
-ssao.kernelRadius = 0.9;
-ssao.minDistance = 0.002;
-ssao.maxDistance = 0.12;
-ssao.output = SSAOPass.OUTPUT.Default;
-composer.addPass(ssao);
-// Subtler bloom: only genuine highlights bloom, keeps whites from blowing out.
-const bloom = new UnrealBloomPass(new THREE.Vector2(wrap.clientWidth, wrap.clientHeight), 0.18, 0.5, 0.95);
+const bloom = new UnrealBloomPass(new THREE.Vector2(wrap.clientWidth, wrap.clientHeight), 0.16, 0.5, 0.96);
 composer.addPass(bloom);
 composer.addPass(new SMAAPass(wrap.clientWidth * devicePixelRatio, wrap.clientHeight * devicePixelRatio));
 composer.addPass(new OutputPass());
