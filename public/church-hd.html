@@ -434,10 +434,10 @@ function makeWallWithWindows(w,h,d,x,y,z, windowCount, axis){
         const t = (i+0.5)/windowCount - 0.5;
         if(axis==='x'){
           const wx = t*w*0.85;
-          g.add(box(winSpan,winH,d+0.4,glassMat, wx, ry, 0, false));
+          g.add(box(winSpan,winH,d*0.4,glassMat, wx, ry, 0, false));
         } else {
           const wz = t*d*0.85;
-          g.add(box(w+0.4,winH,winSpan,glassMat, 0, ry, wz, false));
+          g.add(box(w*0.4,winH,winSpan,glassMat, 0, ry, wz, false));
         }
       }
     });
