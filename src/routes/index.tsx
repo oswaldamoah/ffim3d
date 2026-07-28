@@ -3,17 +3,17 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "FFIM 3D" },
+      { title: "3D Church Model | FFIM" },
       {
         name: "description",
         content:
-          "Explore a photorealistic 3D model of a church with PBR materials, HDRI-based lighting, soft shadows, and cinematic post-processing.",
+          "Church model for Flourishing Field International Ministries",
       },
-      { property: "og:title", content: "FFIM 3D" },
+      { property: "og:title", content: "3D Church Model | FFIM" },
       {
         property: "og:description",
         content:
-          "Explore a photorealistic 3D model of a church with PBR materials, HDRI-based lighting, soft shadows, and cinematic post-processing.",
+          "Church model for Flourishing Field International Ministries",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
