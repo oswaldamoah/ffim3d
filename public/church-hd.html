@@ -67,11 +67,27 @@
   <div id="hint">Drag to rotate · Scroll to zoom · Right-drag to pan</div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 const wrap = document.getElementById('canvas-wrap');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xcfe3f2);
+scene.background = new THREE.Color(0xdfeaf3);
+scene.fog = new THREE.Fog(0xdfeaf3, 120, 260);
 
 const camera = new THREE.PerspectiveCamera(45, wrap.clientWidth/wrap.clientHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias:true });
@@ -80,21 +96,54 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.shadowMap.enabled = true;
 wrap.appendChild(renderer.domElement);
 
+// ---- HD renderer pipeline ----
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.physicallyCorrectLights = true;
+
+// Image-based lighting from a procedural room environment (no external HDRI download).
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+// Post-processing composer: SSAO -> Bloom -> SMAA -> OutputPass (handles tone mapping + sRGB).
+const composer = new EffectComposer(renderer);
+composer.setPixelRatio(Math.min(devicePixelRatio, 2));
+composer.setSize(wrap.clientWidth, wrap.clientHeight);
+composer.addPass(new RenderPass(scene, camera));
+const ssao = new SSAOPass(scene, camera, wrap.clientWidth, wrap.clientHeight);
+ssao.kernelRadius = 0.6;
+ssao.minDistance = 0.001;
+ssao.maxDistance = 0.08;
+ssao.output = SSAOPass.OUTPUT.Default;
+composer.addPass(ssao);
+const bloom = new UnrealBloomPass(new THREE.Vector2(wrap.clientWidth, wrap.clientHeight), 0.35, 0.6, 0.9);
+composer.addPass(bloom);
+composer.addPass(new SMAAPass(wrap.clientWidth * devicePixelRatio, wrap.clientHeight * devicePixelRatio));
+composer.addPass(new OutputPass());
+
 // lighting
-scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-const sun = new THREE.DirectionalLight(0xffffff, 0.85);
-sun.position.set(40, 60, 30);
+// Warm golden-hour sun with high-res soft shadows.
+const sun = new THREE.DirectionalLight(0xfff1d6, 3.2);
+sun.position.set(45, 70, 35);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048,2048);
-sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
-sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
+sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
+sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 220;
+sun.shadow.bias = -0.00015;
+sun.shadow.normalBias = 0.04;
+sun.shadow.radius = 6;
 scene.add(sun);
-scene.add(new THREE.HemisphereLight(0xbdd7ee, 0x555544, 0.4));
+// Sky/ground bounce for realistic ambient tint.
+scene.add(new THREE.HemisphereLight(0xbcd4ea, 0x6b5a3e, 0.35));
 
 // ground
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(200,200),
-  new THREE.MeshLambertMaterial({ color:0x9fc27a })
+  new THREE.MeshStandardMaterial({ color:0x8bb56a, roughness:0.95, metalness:0.0 })
 );
 ground.rotation.x = -Math.PI/2;
 ground.receiveShadow = true;
@@ -190,11 +239,11 @@ const interiorGroup = new THREE.Group();
 scene.add(exteriorGroup, interiorGroup);
 
 // materials
-const wallMat = new THREE.MeshLambertMaterial({ color:0xe4dcc8 });
-const roofMat = new THREE.MeshLambertMaterial({ color:0x7a3b30 });
-const trimMat = new THREE.MeshLambertMaterial({ color:0xffffff });
-const glassMat = new THREE.MeshPhongMaterial({ color:0x8fc7e0, transparent:true, opacity:0.55, shininess:80 });
-const doorMat = new THREE.MeshLambertMaterial({ color:0x5a3a22 });
+const wallMat = new THREE.MeshStandardMaterial({ color:0xe4dcc8, roughness:0.82, metalness:0.02 });
+const roofMat = new THREE.MeshStandardMaterial({ color:0x7a3b30, roughness:0.65, metalness:0.05 });
+const trimMat = new THREE.MeshStandardMaterial({ color:0xf5f2ea, roughness:0.55, metalness:0.02 });
+const glassMat = new THREE.MeshPhysicalMaterial({ color:0x9ccfe4, roughness:0.08, metalness:0.0, transmission:0.85, thickness:0.4, ior:1.5, transparent:true, opacity:0.75, envMapIntensity:1.4 });
+const doorMat = new THREE.MeshPhysicalMaterial({ color:0x5a3a22, roughness:0.55, metalness:0.05, clearcoat:0.3, clearcoatRoughness:0.4 });
 
 function box(w,h,d,mat,x,y,z,castShadow=true){
   const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
@@ -369,7 +418,7 @@ function buildAnnex(){
 
   // floor division slabs, marking the lines between the three storeys (a little
   // darker than the bright trim colour used elsewhere), plus a matching ground floor
-  const slabMat = new THREE.MeshLambertMaterial({ color:0x9a958c });
+  const slabMat = new THREE.MeshStandardMaterial({ color:0x9a958c, roughness:0.75, metalness:0.03 });
   g.add(box(annexW-0.06, 0.3, annexD-0.06, slabMat, 0, 0.15, cz, false));
   g.add(box(annexW+0.06, 0.25, annexD+0.06, slabMat, 0, storeyH, cz, false));
   g.add(box(annexW+0.06, 0.25, annexD+0.06, slabMat, 0, storeyH*2, cz, false));
@@ -426,13 +475,13 @@ function buildAnnex(){
 exteriorGroup.add(buildAnnex());
 
 // ===================== INTERIOR =====================
-const floorMat = new THREE.MeshLambertMaterial({ color:0xcbb593 });
-const aisleMat = new THREE.MeshLambertMaterial({ color:0xc9a05a });
-const danceMat = new THREE.MeshLambertMaterial({ color:0xb2536e });
-const stageMat = new THREE.MeshLambertMaterial({ color:0x7b5ba3 });
-const pewMat = new THREE.MeshLambertMaterial({ color:0x8a6a4a });
-const galleryMat = new THREE.MeshLambertMaterial({ color:0x4d7ea8 });
-const railMat = new THREE.MeshLambertMaterial({ color:0x333333 });
+const floorMat = new THREE.MeshStandardMaterial({ color:0xcbb593, roughness:0.7, metalness:0.03 });
+const aisleMat = new THREE.MeshStandardMaterial({ color:0xc9a05a, roughness:0.6, metalness:0.03 });
+const danceMat = new THREE.MeshStandardMaterial({ color:0xb2536e, roughness:0.45, metalness:0.05 });
+const stageMat = new THREE.MeshStandardMaterial({ color:0x7b5ba3, roughness:0.5, metalness:0.08 });
+const pewMat = new THREE.MeshPhysicalMaterial({ color:0x8a6a4a, roughness:0.45, metalness:0.04, clearcoat:0.25, clearcoatRoughness:0.5 });
+const galleryMat = new THREE.MeshStandardMaterial({ color:0x4d7ea8, roughness:0.55, metalness:0.05 });
+const railMat = new THREE.MeshStandardMaterial({ color:0x2a2a2a, roughness:0.35, metalness:0.85 });
 
 // base floor (whole footprint)
 interiorGroup.add(box(W-0.6, 0.3, L-0.6, floorMat, 0, 0.15, 0, false));
@@ -521,7 +570,7 @@ interiorGroup.add(buildStageStepsToDoor(-(stageCenterW/2 + stageEndW/2), stageEn
 // pulpit (replaces the old altar table and plain pulpit box)
 function buildPulpit(x, z, baseY){
   const g = new THREE.Group();
-  const woodMat = new THREE.MeshLambertMaterial({ color:0x5a3a22 });
+  const woodMat = new THREE.MeshPhysicalMaterial({ color:0x5a3a22, roughness:0.55, metalness:0.05, clearcoat:0.3, clearcoatRoughness:0.4 });
   const pedestal = box(1.0, 1.3, 0.8, woodMat, 0, 0.65, 0);
   g.add(pedestal);
   const readingTop = box(1.3, 0.15, 1.0, woodMat, 0, 1.4, 0.05);
@@ -549,8 +598,8 @@ interiorGroup.add(logoMesh);
 // simple church instrument clusters at the left/right ends of the dance floor (the pink open area)
 function buildDrumKit(x, z, baseY){
   const g = new THREE.Group();
-  const shellMat = new THREE.MeshLambertMaterial({ color:0x8a1f2b });
-  const metalMat = new THREE.MeshLambertMaterial({ color:0xcccccc });
+  const shellMat = new THREE.MeshStandardMaterial({ color:0x8a1f2b });
+  const metalMat = new THREE.MeshStandardMaterial({ color:0xcccccc });
   const bass = new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,0.5,16), shellMat);
   bass.rotation.x = Math.PI/2;
   bass.position.set(0, 0.55, 0);
@@ -574,8 +623,8 @@ function buildDrumKit(x, z, baseY){
 }
 function buildKeyboard(x, z, baseY){
   const g = new THREE.Group();
-  const bodyMat = new THREE.MeshLambertMaterial({ color:0x2a2a2a });
-  const legMat = new THREE.MeshLambertMaterial({ color:0x555555 });
+  const bodyMat = new THREE.MeshStandardMaterial({ color:0x2a2a2a });
+  const legMat = new THREE.MeshStandardMaterial({ color:0x555555 });
   g.add(box(1.6,0.12,0.5, bodyMat, 0, 0.95, 0));
   [[-0.6,-0.15],[0.6,-0.15],[-0.6,0.15],[0.6,0.15]].forEach(([lx,lz])=>{
     g.add(box(0.06,0.9,0.06, legMat, lx, 0.45, lz, false));
@@ -970,7 +1019,7 @@ function animate(){
   requestAnimationFrame(animate);
   updateAutoTour(performance.now());
   updateCamera();
-  renderer.render(scene, camera);
+  composer.render();
 }
 animate();
 </script>
