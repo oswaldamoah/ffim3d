@@ -258,7 +258,7 @@ scene.add(new THREE.HemisphereLight(0xa8c4dc, 0x4a3f2e, 0.18));
 // ground
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(200,200),
-  new THREE.MeshStandardMaterial({ color:0x8bb56a, roughness:0.95, metalness:0.0 })
+  applyPbr(new THREE.MeshStandardMaterial({ color:0x6d8e4d, roughness:0.98, metalness:0.0 }), 'grass')
 );
 ground.rotation.x = -Math.PI/2;
 ground.receiveShadow = true;
