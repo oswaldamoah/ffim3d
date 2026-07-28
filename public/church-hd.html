@@ -58,11 +58,13 @@
       <span class="collapse-btn" id="ui-toggle">&minus;</span>
     </div>
     <div class="panel-body" id="ui-body">
-      <button id="btn-ext" class="active">Exterior</button>
-      <button id="btn-int">Interior</button>
-      <button id="btn-cut">Cutaway (both)</button>
-      <button id="btn-top">Top-down floor plan</button>
-      <button id="btn-tour" title="Slowly orbit the interior view, then ease into the floor plan">&#9654; Auto Tour</button>
+      <div class="icon-row">
+        <button id="btn-ext" class="icon-btn active" title="Exterior view" aria-label="Exterior view">&#127963;</button>
+        <button id="btn-int" class="icon-btn" title="Interior view" aria-label="Interior view">&#128374;</button>
+        <button id="btn-cut" class="icon-btn" title="Cutaway (both)" aria-label="Cutaway">&#9986;</button>
+        <button id="btn-top" class="icon-btn" title="Top-down floor plan" aria-label="Top-down floor plan">&#128506;</button>
+        <button id="btn-tour" class="icon-btn" title="Auto tour" aria-label="Auto tour">&#9654;</button>
+      </div>
     </div>
   </div>
   <div id="legend">
@@ -71,14 +73,15 @@
       <span class="collapse-btn" id="legend-toggle">&minus;</span>
     </div>
     <div class="panel-body" id="legend-body">
-      <div><span style="background:#8a6a4a"></span>Single-chair seating (3 blocks)</div>
-      <div><span style="background:#c9a05a"></span>Walkways (x4)</div>
-      <div><span style="background:#b2536e"></span>Dance floor</div>
-      <div><span style="background:#7b5ba3"></span>Stage / altar</div>
-      <div><span style="background:#4d7ea8"></span>Gallery (upper level)</div>
+      <div class="legend-row" title="Single-chair seating (3 blocks)"><span class="legend-swatch" style="background:#8a6a4a"></span><span class="legend-icon">&#128374;</span></div>
+      <div class="legend-row" title="Walkways (x4)"><span class="legend-swatch" style="background:#c9a05a"></span><span class="legend-icon">&#128694;</span></div>
+      <div class="legend-row" title="Dance floor"><span class="legend-swatch" style="background:#b2536e"></span><span class="legend-icon">&#128131;</span></div>
+      <div class="legend-row" title="Stage / altar"><span class="legend-swatch" style="background:#7b5ba3"></span><span class="legend-icon">&#127908;</span></div>
+      <div class="legend-row" title="Gallery (upper level)"><span class="legend-swatch" style="background:#4d7ea8"></span><span class="legend-icon">&#127959;</span></div>
     </div>
   </div>
-  <div id="hint">Drag to rotate · Scroll to zoom · Right-drag to pan</div>
+  <div id="hint">Drag to rotate &middot; Scroll to zoom &middot; Right-drag to pan &middot; Press <b>F</b> for fullscreen</div>
+  <button id="fs-btn" title="Toggle fullscreen (F)" aria-label="Toggle fullscreen">&#9974;</button>
 </div>
 
 <script type="importmap">
