@@ -445,15 +445,35 @@ function makeWallWithWindows(w,h,d,x,y,z, windowCount, axis){
   if(windowCount > 0){
     const winH = h*0.22, winSpan = axis==='x'? w/(windowCount*2.2) : d/(windowCount*2.2);
     const rowYs = [h*-0.2, h*0.3]; // downstairs row, then upstairs row (relative to wall centre)
+    // window depth is wall-thickness + a hair, so the pane pokes out on both
+    // faces and actually reads as a window instead of being buried in stone.
+    const paneDepth = Math.max(d, 0.6) + 0.08;
+    const frameT = 0.12;         // frame thickness (protrudes slightly)
+    const mullionT = 0.08;       // divider bar thickness
     rowYs.forEach(ry=>{
       for(let i=0;i<windowCount;i++){
         const t = (i+0.5)/windowCount - 0.5;
         if(axis==='x'){
           const wx = t*w*0.85;
-          g.add(box(winSpan,winH,d*0.4,glassMat, wx, ry, 0, false));
+          // glass pane
+          g.add(box(winSpan, winH, paneDepth, glassMat, wx, ry, 0, false));
+          // stone frame around the pane (top, bottom, sides)
+          g.add(box(winSpan+0.3, frameT, paneDepth+0.02, trimMat, wx, ry+winH/2+frameT/2, 0));
+          g.add(box(winSpan+0.3, frameT, paneDepth+0.02, trimMat, wx, ry-winH/2-frameT/2, 0));
+          g.add(box(frameT, winH+0.3, paneDepth+0.02, trimMat, wx-winSpan/2-frameT/2, ry, 0));
+          g.add(box(frameT, winH+0.3, paneDepth+0.02, trimMat, wx+winSpan/2+frameT/2, ry, 0));
+          // cross mullion
+          g.add(box(winSpan, mullionT, paneDepth+0.01, trimMat, wx, ry, 0));
+          g.add(box(mullionT, winH,   paneDepth+0.01, trimMat, wx, ry, 0));
         } else {
           const wz = t*d*0.85;
-          g.add(box(w*0.4,winH,winSpan,glassMat, 0, ry, wz, false));
+          g.add(box(paneDepth, winH, winSpan, glassMat, 0, ry, wz, false));
+          g.add(box(paneDepth+0.02, frameT, winSpan+0.3, trimMat, 0, ry+winH/2+frameT/2, wz));
+          g.add(box(paneDepth+0.02, frameT, winSpan+0.3, trimMat, 0, ry-winH/2-frameT/2, wz));
+          g.add(box(paneDepth+0.02, winH+0.3, frameT, trimMat, 0, ry, wz-winSpan/2-frameT/2));
+          g.add(box(paneDepth+0.02, winH+0.3, frameT, trimMat, 0, ry, wz+winSpan/2+frameT/2));
+          g.add(box(paneDepth+0.01, mullionT, winSpan, trimMat, 0, ry, wz));
+          g.add(box(paneDepth+0.01, winH, mullionT, trimMat, 0, ry, wz));
         }
       }
     });
