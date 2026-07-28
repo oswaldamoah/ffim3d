@@ -1,29 +1,91 @@
-# Welcome to your Lovable project
+# FFIM 3D
 
-This project was built with [Lovable](https://lovable.dev).
+An interactive 3D church model for Flourishing Field International Ministries
 
-## Build with Lovable
+## Features
+- Multiple views (Exterior, Interior, Cutaway, and Top-down Floor Plan)
+- Automatic guided tour
+- Responsive controls
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+## Screenshots
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+![Exterior View](/screenshots/s1.png)
+
+![Interior View](/screenshots/s2.png)
+
+![Cutaway View](/screenshots/s3.png)
+
+![Top-down Floor Plan](/screenshots/s4.png)
+
+
+
+## Views
+
+### Exterior
+Explore the outside of the church building from any angle.
+
+### Interior
+View the complete church interior, including seating, stage, gallery, and walkways.
+
+### Cutaway
+Reveal both the interior and exterior by hiding selected walls and roof sections.
+
+### Top-down Floor Plan
+Display a bird's-eye view of the church layout for planning and visualization.
+
+
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Installation Requirements: **Node.js** and **npm** 
 
-```sh
-git clone <this-repository-url>
+```bash
+git clone <repository-url>
 cd <repository-name>
-npm i
+npm install
 npm run dev
 ```
 
-## Built with
+To create a production build:
+
+```bash
+npm run build
+```
+
+To preview the production build:
+
+```bash
+npm run start
+```
+
+## Built With
 
 - TanStack Start
-- TypeScript
 - React
+- TypeScript
+- Three.js
 - Tailwind CSS
+- Vite
+
+## Project Structure
+
+```text
+src/
+├── components/
+├── routes/
+├── lib/
+├── styles/
+├── assets/
+└── app.tsx
+```
+
+## Browser Support
+
+- Google Chrome
+- Microsoft Edge
+- Mozilla Firefox
+- Safari
+
+## License
+
+This project is licensed under the MIT License.
