@@ -9,22 +9,18 @@
   canvas { display:block; }
   #ui {
     position:absolute; top:14px; left:14px; z-index:10;
-    background:rgba(255,255,255,0.92); border-radius:10px; padding:8px;
+    background:rgba(255,255,255,0.92); border-radius:10px; padding:10px 14px;
     box-shadow:0 2px 10px rgba(0,0,0,0.15); font-size:13px; color:#222;
   }
-  #ui .icon-row { display:flex; gap:6px; align-items:center; }
-  #ui button.icon-btn {
-    width:36px; height:36px; padding:0; border-radius:8px;
-    border:1px solid #ccc; background:#fff; cursor:pointer;
-    display:inline-flex; align-items:center; justify-content:center;
-    font-size:18px; line-height:1; color:#2b4a7a;
+  #ui button {
+    display:inline-block; margin:3px 4px 3px 0; padding:7px 12px; border-radius:6px;
+    border:1px solid #ccc; background:#fff; cursor:pointer; font-size:13px;
   }
-  #ui button.icon-btn:hover { background:#eef2f8; }
-  #ui button.icon-btn.active { background:#2b4a7a; color:#fff; border-color:#2b4a7a; }
-  #ui #btn-tour.on { background:#3f7a4d; color:#fff; border-color:#3f7a4d; }
+  #ui button.active { background:#2b4a7a; color:#fff; border-color:#2b4a7a; }
+  #btn-tour.on { background:#3f7a4d; color:#fff; border-color:#3f7a4d; }
   .panel-header {
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    font-weight:bold; cursor:pointer; user-select:none; padding:2px 4px 6px;
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    font-weight:bold; cursor:pointer; user-select:none;
   }
   #legend .panel-header { margin-bottom:4px; }
   .collapse-btn {
@@ -32,22 +28,12 @@
     line-height:20px; text-align:center; font-size:13px; cursor:pointer; color:#2b4a7a; flex:none;
   }
   #ui.collapsed .panel-body, #legend.collapsed .panel-body { display:none; }
-  #ui.collapsed, #legend.collapsed { padding-bottom:8px; }
+  #ui.collapsed, #legend.collapsed { padding-bottom:10px; }
   #hint { position:absolute; bottom:12px; left:14px; z-index:10; color:#333; font-size:12px;
     background:rgba(255,255,255,0.85); padding:6px 10px; border-radius:8px; }
   #legend { position:absolute; top:14px; right:14px; z-index:10; background:rgba(255,255,255,0.92);
-    border-radius:10px; padding:8px 10px; font-size:12px; color:#333; line-height:1.6; box-shadow:0 2px 10px rgba(0,0,0,0.15); }
-  #legend .legend-row { display:flex; align-items:center; gap:8px; padding:2px 2px; }
-  #legend .legend-swatch { width:14px; height:14px; border-radius:3px; flex:none; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15); }
-  #legend .legend-icon { font-size:14px; width:16px; text-align:center; }
-  #fs-btn {
-    position:absolute; bottom:12px; right:14px; z-index:10;
-    width:40px; height:40px; border-radius:10px; border:1px solid #ccc;
-    background:rgba(255,255,255,0.92); cursor:pointer;
-    display:inline-flex; align-items:center; justify-content:center;
-    font-size:20px; color:#2b4a7a; box-shadow:0 2px 10px rgba(0,0,0,0.15);
-  }
-  #fs-btn:hover { background:#eef2f8; }
+    border-radius:10px; padding:10px 14px; font-size:12px; color:#333; line-height:1.6; box-shadow:0 2px 10px rgba(0,0,0,0.15); }
+  #legend div span { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:middle; }
 </style>
 </head>
 <body>
@@ -58,13 +44,11 @@
       <span class="collapse-btn" id="ui-toggle">&minus;</span>
     </div>
     <div class="panel-body" id="ui-body">
-      <div class="icon-row">
-        <button id="btn-ext" class="icon-btn active" title="Exterior view" aria-label="Exterior view">&#127963;</button>
-        <button id="btn-int" class="icon-btn" title="Interior view" aria-label="Interior view">&#128374;</button>
-        <button id="btn-cut" class="icon-btn" title="Cutaway (both)" aria-label="Cutaway">&#9986;</button>
-        <button id="btn-top" class="icon-btn" title="Top-down floor plan" aria-label="Top-down floor plan">&#128506;</button>
-        <button id="btn-tour" class="icon-btn" title="Auto tour" aria-label="Auto tour">&#9654;</button>
-      </div>
+      <button id="btn-ext" class="active">Exterior</button>
+      <button id="btn-int">Interior</button>
+      <button id="btn-cut">Cutaway (both)</button>
+      <button id="btn-top">Top-down floor plan</button>
+      <button id="btn-tour" title="Slowly orbit the interior view, then ease into the floor plan">&#9654; Auto Tour</button>
     </div>
   </div>
   <div id="legend">
@@ -73,15 +57,14 @@
       <span class="collapse-btn" id="legend-toggle">&minus;</span>
     </div>
     <div class="panel-body" id="legend-body">
-      <div class="legend-row" title="Single-chair seating (3 blocks)"><span class="legend-swatch" style="background:#8a6a4a"></span><span class="legend-icon">&#128374;</span></div>
-      <div class="legend-row" title="Walkways (x4)"><span class="legend-swatch" style="background:#c9a05a"></span><span class="legend-icon">&#128694;</span></div>
-      <div class="legend-row" title="Dance floor"><span class="legend-swatch" style="background:#b2536e"></span><span class="legend-icon">&#128131;</span></div>
-      <div class="legend-row" title="Stage / altar"><span class="legend-swatch" style="background:#7b5ba3"></span><span class="legend-icon">&#127908;</span></div>
-      <div class="legend-row" title="Gallery (upper level)"><span class="legend-swatch" style="background:#4d7ea8"></span><span class="legend-icon">&#127959;</span></div>
+      <div><span style="background:#8a6a4a"></span>Single-chair seating (3 blocks)</div>
+      <div><span style="background:#c9a05a"></span>Walkways (x4)</div>
+      <div><span style="background:#b2536e"></span>Dance floor</div>
+      <div><span style="background:#7b5ba3"></span>Stage / altar</div>
+      <div><span style="background:#4d7ea8"></span>Gallery (upper level)</div>
     </div>
   </div>
-  <div id="hint">Drag to rotate &middot; Scroll to zoom &middot; Right-drag to pan &middot; Press <b>F</b> for fullscreen</div>
-  <button id="fs-btn" title="Toggle fullscreen (F)" aria-label="Toggle fullscreen">&#9974;</button>
+  <div id="hint">Drag to rotate · Scroll to zoom · Right-drag to pan</div>
 </div>
 
 <script type="importmap">
@@ -652,25 +635,10 @@ function buildAnnex(){
   g.add(annexStair);
 
   // door into the building, aligned with where its staircase is, same height as
-  // every other door. The door is a THIN solid slab mounted on the stage-facing
-  // face of the annex boundary wall (offset outward) so it never z-fights the
-  // wall itself, and a matching slab is placed on the annex-interior face so
-  // both sides read as a single solid door.
-  const annexBoundaryFrontZ = cz - annexD/2;              // stage-side face of boundary wall
-  const annexBoundaryBackZ  = cz - annexD/2 + wallT;      // annex-side face of boundary wall
-  const doorSlabT = 0.12;
-  const doorFrameW = sideWindowW + 0.35;
-  // stage-facing leaf (visible from the sanctuary/stage)
-  g.add(box(doorFrameW, DOOR_H, doorSlabT, doorMat, -12, DOOR_H/2, annexBoundaryFrontZ - doorSlabT/2 - 0.01));
-  // annex-facing leaf (visible from inside the annex)
-  g.add(box(doorFrameW, DOOR_H, doorSlabT, doorMat, -12, DOOR_H/2, annexBoundaryBackZ  + doorSlabT/2 + 0.01));
-  // stone frame trim above both faces
-  g.add(box(doorFrameW + 0.4, 0.4, doorSlabT + 0.05, trimMat, -12, DOOR_H + 0.2, annexBoundaryFrontZ - doorSlabT/2 - 0.01));
-  g.add(box(doorFrameW + 0.4, 0.4, doorSlabT + 0.05, trimMat, -12, DOOR_H + 0.2, annexBoundaryBackZ  + doorSlabT/2 + 0.01));
-  // brass handles so the door reads as a solid piece, not just a plane
-  const doorHandleMat = new THREE.MeshStandardMaterial({ color:0xb8892a, roughness:0.35, metalness:0.9 });
-  g.add(box(0.35, 0.12, 0.12, doorHandleMat, -12 + doorFrameW*0.35, DOOR_H*0.45, annexBoundaryFrontZ - doorSlabT - 0.06));
-  g.add(box(0.35, 0.12, 0.12, doorHandleMat, -12 + doorFrameW*0.35, DOOR_H*0.45, annexBoundaryBackZ  + doorSlabT + 0.06));
+  // every other door
+  const annexDoorZ = cz-annexD/2+wallT/2;
+  g.add(box(sideWindowW, DOOR_H, 1.0, doorMat, -12, DOOR_H/2, annexDoorZ));
+  g.add(box(sideWindowW+0.4, 0.4, 1.1, trimMat, -12, DOOR_H+0.2, annexDoorZ));
 
   return g;
 }
@@ -1206,16 +1174,14 @@ function stopAutoTour(){
   if(!autoTourOn) return;
   autoTourOn = false;
   btnTour.classList.remove('on');
-  btnTour.innerHTML = '&#9654;';
-  btnTour.title = 'Auto tour';
+  btnTour.innerHTML = '&#9654; Auto Tour';
 }
 
 btnTour.onclick = ()=>{
   autoTourOn = !autoTourOn;
   if(autoTourOn){
     btnTour.classList.add('on');
-    btnTour.innerHTML = '&#10074;&#10074;';
-    btnTour.title = 'Stop auto tour';
+    btnTour.innerHTML = '&#10074;&#10074; Auto Tour';
     startAutoTour();
   } else {
     stopAutoTour();
@@ -1293,45 +1259,6 @@ window.addEventListener('resize', ()=>{
   composer.setSize(w, h);
   bloom.setSize(w, h);
 });
-
-// ===================== FULLSCREEN =====================
-const fsBtn = document.getElementById('fs-btn');
-function fsElement(){
-  // Prefer the iframe (if this page is embedded) so the whole viewer goes fullscreen,
-  // otherwise fall back to the canvas wrapper.
-  try { if(window.frameElement) return window.frameElement; } catch(_){}
-  return wrap;
-}
-function toggleFullscreen(){
-  const inFs = document.fullscreenElement || document.webkitFullscreenElement;
-  if(inFs){
-    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-  } else {
-    const el = fsElement();
-    (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
-  }
-}
-fsBtn.addEventListener('click', toggleFullscreen);
-document.addEventListener('keydown', e=>{
-  if((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey){
-    const tag = (e.target && e.target.tagName) || '';
-    if(tag === 'INPUT' || tag === 'TEXTAREA') return;
-    e.preventDefault();
-    toggleFullscreen();
-  }
-});
-document.addEventListener('fullscreenchange', ()=>{
-  const inFs = !!document.fullscreenElement;
-  fsBtn.innerHTML = inFs ? '&#10066;' : '&#9974;';
-});
-
-// ===================== PIPELINE PRE-WARM =====================
-// First user interaction feels laggy because the very first frames compile all
-// shaders + upload textures under a heavy composer. Do that work up front, then
-// start the animation loop — controls are already wired above so they respond
-// immediately once the loop begins.
-try { renderer.compile(scene, camera); } catch(_){}
-composer.render(); // force one full pass so bloom/SMAA/output shaders compile
 
 function animate(){
   requestAnimationFrame(animate);
