@@ -353,7 +353,27 @@ scene.add(exteriorGroup, interiorGroup);
 const wallMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xd6cdb8, roughness:0.88, metalness:0.02 }), 'plaster');
 const roofMat = applyPbr(new THREE.MeshStandardMaterial({ color:0x6a3229, roughness:0.72, metalness:0.05 }), 'roof');
 const trimMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xe8e2d4, roughness:0.62, metalness:0.02 }), 'plaster');
-const glassMat = new THREE.MeshPhysicalMaterial({ color:0xdfefff, roughness:0.02, metalness:0.0, transmission:0.98, thickness:0.35, ior:1.52, transparent:true, opacity:1.0, envMapIntensity:1.8, clearcoat:1.0, clearcoatRoughness:0.04, attenuationColor:0xd4e6f1, attenuationDistance:2.5, side:THREE.DoubleSide });
+// Realistic translucent stained/tinted glass without full transmission —
+// transmission does a per-frame refraction render that murders framerate on
+// mid-range GPUs. Instead we use a physically-based translucent surface with
+// alpha, a strong environment reflection, clearcoat, and a subtle emissive
+// tint so it reads as lit-from-behind glass at any time of day.
+const glassMat = new THREE.MeshPhysicalMaterial({
+  color: 0xbfd8e8,
+  roughness: 0.05,
+  metalness: 0.0,
+  transparent: true,
+  opacity: 0.35,
+  transmission: 0.0,
+  ior: 1.5,
+  envMapIntensity: 2.2,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.06,
+  emissive: 0x89b4d0,
+  emissiveIntensity: 0.18,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+});
 const doorMat = applyPbr(new THREE.MeshPhysicalMaterial({ color:0x4a2f1c, roughness:0.6, metalness:0.05, clearcoat:0.35, clearcoatRoughness:0.5 }), 'wood');
 
 function box(w,h,d,mat,x,y,z,castShadow=true){
