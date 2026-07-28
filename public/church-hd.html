@@ -1294,6 +1294,45 @@ window.addEventListener('resize', ()=>{
   bloom.setSize(w, h);
 });
 
+// ===================== FULLSCREEN =====================
+const fsBtn = document.getElementById('fs-btn');
+function fsElement(){
+  // Prefer the iframe (if this page is embedded) so the whole viewer goes fullscreen,
+  // otherwise fall back to the canvas wrapper.
+  try { if(window.frameElement) return window.frameElement; } catch(_){}
+  return wrap;
+}
+function toggleFullscreen(){
+  const inFs = document.fullscreenElement || document.webkitFullscreenElement;
+  if(inFs){
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else {
+    const el = fsElement();
+    (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+  }
+}
+fsBtn.addEventListener('click', toggleFullscreen);
+document.addEventListener('keydown', e=>{
+  if((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey){
+    const tag = (e.target && e.target.tagName) || '';
+    if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+    e.preventDefault();
+    toggleFullscreen();
+  }
+});
+document.addEventListener('fullscreenchange', ()=>{
+  const inFs = !!document.fullscreenElement;
+  fsBtn.innerHTML = inFs ? '&#10066;' : '&#9974;';
+});
+
+// ===================== PIPELINE PRE-WARM =====================
+// First user interaction feels laggy because the very first frames compile all
+// shaders + upload textures under a heavy composer. Do that work up front, then
+// start the animation loop — controls are already wired above so they respond
+// immediately once the loop begins.
+try { renderer.compile(scene, camera); } catch(_){}
+composer.render(); // force one full pass so bloom/SMAA/output shaders compile
+
 function animate(){
   requestAnimationFrame(animate);
   updateAutoTour(performance.now());
