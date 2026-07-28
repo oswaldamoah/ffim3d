@@ -9,18 +9,22 @@
   canvas { display:block; }
   #ui {
     position:absolute; top:14px; left:14px; z-index:10;
-    background:rgba(255,255,255,0.92); border-radius:10px; padding:10px 14px;
+    background:rgba(255,255,255,0.92); border-radius:10px; padding:8px;
     box-shadow:0 2px 10px rgba(0,0,0,0.15); font-size:13px; color:#222;
   }
-  #ui button {
-    display:inline-block; margin:3px 4px 3px 0; padding:7px 12px; border-radius:6px;
-    border:1px solid #ccc; background:#fff; cursor:pointer; font-size:13px;
+  #ui .icon-row { display:flex; gap:6px; align-items:center; }
+  #ui button.icon-btn {
+    width:36px; height:36px; padding:0; border-radius:8px;
+    border:1px solid #ccc; background:#fff; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:18px; line-height:1; color:#2b4a7a;
   }
-  #ui button.active { background:#2b4a7a; color:#fff; border-color:#2b4a7a; }
-  #btn-tour.on { background:#3f7a4d; color:#fff; border-color:#3f7a4d; }
+  #ui button.icon-btn:hover { background:#eef2f8; }
+  #ui button.icon-btn.active { background:#2b4a7a; color:#fff; border-color:#2b4a7a; }
+  #ui #btn-tour.on { background:#3f7a4d; color:#fff; border-color:#3f7a4d; }
   .panel-header {
-    display:flex; align-items:center; justify-content:space-between; gap:14px;
-    font-weight:bold; cursor:pointer; user-select:none;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-weight:bold; cursor:pointer; user-select:none; padding:2px 4px 6px;
   }
   #legend .panel-header { margin-bottom:4px; }
   .collapse-btn {
@@ -28,12 +32,22 @@
     line-height:20px; text-align:center; font-size:13px; cursor:pointer; color:#2b4a7a; flex:none;
   }
   #ui.collapsed .panel-body, #legend.collapsed .panel-body { display:none; }
-  #ui.collapsed, #legend.collapsed { padding-bottom:10px; }
+  #ui.collapsed, #legend.collapsed { padding-bottom:8px; }
   #hint { position:absolute; bottom:12px; left:14px; z-index:10; color:#333; font-size:12px;
     background:rgba(255,255,255,0.85); padding:6px 10px; border-radius:8px; }
   #legend { position:absolute; top:14px; right:14px; z-index:10; background:rgba(255,255,255,0.92);
-    border-radius:10px; padding:10px 14px; font-size:12px; color:#333; line-height:1.6; box-shadow:0 2px 10px rgba(0,0,0,0.15); }
-  #legend div span { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:middle; }
+    border-radius:10px; padding:8px 10px; font-size:12px; color:#333; line-height:1.6; box-shadow:0 2px 10px rgba(0,0,0,0.15); }
+  #legend .legend-row { display:flex; align-items:center; gap:8px; padding:2px 2px; }
+  #legend .legend-swatch { width:14px; height:14px; border-radius:3px; flex:none; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15); }
+  #legend .legend-icon { font-size:14px; width:16px; text-align:center; }
+  #fs-btn {
+    position:absolute; bottom:12px; right:14px; z-index:10;
+    width:40px; height:40px; border-radius:10px; border:1px solid #ccc;
+    background:rgba(255,255,255,0.92); cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:20px; color:#2b4a7a; box-shadow:0 2px 10px rgba(0,0,0,0.15);
+  }
+  #fs-btn:hover { background:#eef2f8; }
 </style>
 </head>
 <body>
