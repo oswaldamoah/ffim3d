@@ -439,34 +439,37 @@ function buildDogLegStair(x0, z0, totalRise, stepsPerFlight, treadW, treadDepth,
 
 // ===================== EXTERIOR =====================
 // four walls with window strips
-function makeWallWithWindows(w,h,d,x,y,z, windowCount, axis){
+// `doorZones` (only used for z-axis walls) is a list of {z, half} ranges in
+// world space where windows must be skipped so glass never sits inside a door.
+function makeWallWithWindows(w,h,d,x,y,z, windowCount, axis, doorZones){
   const g = new THREE.Group();
   g.add(box(w,h,d,wallMat,0,0,0));
   if(windowCount > 0){
     const winH = h*0.22, winSpan = axis==='x'? w/(windowCount*2.2) : d/(windowCount*2.2);
     const rowYs = [h*-0.2, h*0.3]; // downstairs row, then upstairs row (relative to wall centre)
-    // window depth is wall-thickness + a hair, so the pane pokes out on both
-    // faces and actually reads as a window instead of being buried in stone.
-    const paneDepth = Math.max(d, 0.6) + 0.08;
-    const frameT = 0.12;         // frame thickness (protrudes slightly)
-    const mullionT = 0.08;       // divider bar thickness
+    // Pane sits flush inside the wall — only a hair thicker than the wall so
+    // frames read on both faces without the glass extending out and disrupting
+    // the building silhouette.
+    const wallT = axis==='x' ? d : w;
+    const paneDepth = wallT + 0.04;
+    const frameT = 0.12;
+    const mullionT = 0.08;
     rowYs.forEach(ry=>{
       for(let i=0;i<windowCount;i++){
         const t = (i+0.5)/windowCount - 0.5;
         if(axis==='x'){
           const wx = t*w*0.85;
-          // glass pane
           g.add(box(winSpan, winH, paneDepth, glassMat, wx, ry, 0, false));
-          // stone frame around the pane (top, bottom, sides)
           g.add(box(winSpan+0.3, frameT, paneDepth+0.02, trimMat, wx, ry+winH/2+frameT/2, 0));
           g.add(box(winSpan+0.3, frameT, paneDepth+0.02, trimMat, wx, ry-winH/2-frameT/2, 0));
           g.add(box(frameT, winH+0.3, paneDepth+0.02, trimMat, wx-winSpan/2-frameT/2, ry, 0));
           g.add(box(frameT, winH+0.3, paneDepth+0.02, trimMat, wx+winSpan/2+frameT/2, ry, 0));
-          // cross mullion
           g.add(box(winSpan, mullionT, paneDepth+0.01, trimMat, wx, ry, 0));
           g.add(box(mullionT, winH,   paneDepth+0.01, trimMat, wx, ry, 0));
         } else {
           const wz = t*d*0.85;
+          // skip any window whose footprint overlaps a door opening on this wall
+          if(doorZones && doorZones.some(dz => Math.abs((wz + z) - dz.z) < (dz.half + winSpan/2 + 0.2))) continue;
           g.add(box(paneDepth, winH, winSpan, glassMat, 0, ry, wz, false));
           g.add(box(paneDepth+0.02, frameT, winSpan+0.3, trimMat, 0, ry+winH/2+frameT/2, wz));
           g.add(box(paneDepth+0.02, frameT, winSpan+0.3, trimMat, 0, ry-winH/2-frameT/2, wz));
@@ -481,9 +484,17 @@ function makeWallWithWindows(w,h,d,x,y,z, windowCount, axis){
   g.position.set(x,y,z);
   return g;
 }
+// side-wall door z-positions (world space) — used to punch windows out around doors
+const _sideWinW = L/(9*2.2);
+const _danceDoorZ = (danceZStart+danceZEnd)/2;
+const _stairDoorZ = pillarZs[0];
+const sideDoorZones = [
+  { z: _danceDoorZ, half: _sideWinW }, // dance door is 2× window-width wide
+  { z: _stairDoorZ, half: _sideWinW*0.5 },
+];
 exteriorGroup.add(makeWallWithWindows(W,WALL_H,0.6, 0, WALL_H/2, zBack, 0, 'x')); // back wall (has door, handled below)
-exteriorGroup.add(makeWallWithWindows(0.6,WALL_H,L, -W/2, WALL_H/2, 0, 9, 'z')); // left wall
-exteriorGroup.add(makeWallWithWindows(0.6,WALL_H,L, W/2, WALL_H/2, 0, 9, 'z'));  // right wall
+exteriorGroup.add(makeWallWithWindows(0.6,WALL_H,L, -W/2, WALL_H/2, 0, 9, 'z', sideDoorZones)); // left wall
+exteriorGroup.add(makeWallWithWindows(0.6,WALL_H,L, W/2, WALL_H/2, 0, 9, 'z', sideDoorZones));  // right wall
 exteriorGroup.add(makeWallWithWindows(W,WALL_H,0.6, 0, WALL_H/2, zFront, 0, 'x')); // front wall (behind stage)
 
 const DOOR_H = 5.5; // uniform height for every door in the building
