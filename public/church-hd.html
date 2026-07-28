@@ -282,8 +282,8 @@ window.addEventListener('mouseup', ()=>{ dragging=false; panning=false; });
 window.addEventListener('mousemove', e=>{
   const dx = e.clientX-lastX, dy = e.clientY-lastY;
   if(dragging){
-    camAngleY -= dx*0.006;
-    camAngleX = Math.max(0.05, Math.min(1.4, camAngleX + dy*0.006));
+    camAngleY -= dx*0.014;
+    camAngleX = Math.max(0.05, Math.min(1.4, camAngleX + dy*0.014));
   } else if(panning){
     camTarget.x -= dx*0.05;
     camTarget.y += dy*0.05;
@@ -303,8 +303,8 @@ renderer.domElement.addEventListener('touchstart', e=>{
 renderer.domElement.addEventListener('touchmove', e=>{
   if(e.touches.length===1){
     const dx = e.touches[0].clientX - touchLastX, dy = e.touches[0].clientY - touchLastY;
-    camAngleY -= dx*0.006;
-    camAngleX = Math.max(0.05, Math.min(1.4, camAngleX + dy*0.006));
+    camAngleY -= dx*0.014;
+    camAngleX = Math.max(0.05, Math.min(1.4, camAngleX + dy*0.014));
     touchLastX = e.touches[0].clientX; touchLastY = e.touches[0].clientY;
   }
   e.preventDefault();
@@ -357,7 +357,7 @@ scene.add(exteriorGroup, interiorGroup);
 const wallMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xd6cdb8, roughness:0.88, metalness:0.02 }), 'plaster');
 const roofMat = applyPbr(new THREE.MeshStandardMaterial({ color:0x6a3229, roughness:0.72, metalness:0.05 }), 'roof');
 const trimMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xe8e2d4, roughness:0.62, metalness:0.02 }), 'plaster');
-const glassMat = new THREE.MeshPhysicalMaterial({ color:0x9ccfe4, roughness:0.05, metalness:0.0, transmission:0.9, thickness:0.5, ior:1.5, transparent:true, opacity:0.7, envMapIntensity:1.6, clearcoat:1.0, clearcoatRoughness:0.05 });
+const glassMat = new THREE.MeshPhysicalMaterial({ color:0xdfefff, roughness:0.02, metalness:0.0, transmission:0.98, thickness:0.35, ior:1.52, transparent:true, opacity:1.0, envMapIntensity:1.8, clearcoat:1.0, clearcoatRoughness:0.04, attenuationColor:0xd4e6f1, attenuationDistance:2.5, side:THREE.DoubleSide });
 const doorMat = applyPbr(new THREE.MeshPhysicalMaterial({ color:0x4a2f1c, roughness:0.6, metalness:0.05, clearcoat:0.35, clearcoatRoughness:0.5 }), 'wood');
 
 function box(w,h,d,mat,x,y,z,castShadow=true){
@@ -434,10 +434,10 @@ function makeWallWithWindows(w,h,d,x,y,z, windowCount, axis){
         const t = (i+0.5)/windowCount - 0.5;
         if(axis==='x'){
           const wx = t*w*0.85;
-          g.add(box(winSpan,winH,d+0.4,glassMat, wx, ry, 0, false));
+          g.add(box(winSpan,winH,d*0.4,glassMat, wx, ry, 0, false));
         } else {
           const wz = t*d*0.85;
-          g.add(box(w+0.4,winH,winSpan,glassMat, 0, ry, wz, false));
+          g.add(box(w*0.4,winH,winSpan,glassMat, 0, ry, wz, false));
         }
       }
     });
@@ -452,11 +452,19 @@ exteriorGroup.add(makeWallWithWindows(W,WALL_H,0.6, 0, WALL_H/2, zFront, 0, 'x')
 
 const DOOR_H = 5.5; // uniform height for every door in the building
 
-// front doors (double door) centered on back wall
+// front doors (double door) centered on back wall — pushed flush with the outer
+// face of the wall so they never fight the wall's z-buffer while rotating
 const doorGroup = new THREE.Group();
-doorGroup.add(box(4.2, DOOR_H, 0.3, doorMat, -2.4, DOOR_H/2, zBack));
-doorGroup.add(box(4.2, DOOR_H, 0.3, doorMat, 2.4, DOOR_H/2, zBack));
-doorGroup.add(box(9.5, 0.4, 0.4, trimMat, 0, DOOR_H+0.1, zBack));
+const frontDoorZ = zBack - 0.32;
+doorGroup.add(box(4.2, DOOR_H, 0.25, doorMat, -2.4, DOOR_H/2, frontDoorZ));
+doorGroup.add(box(4.2, DOOR_H, 0.25, doorMat, 2.4, DOOR_H/2, frontDoorZ));
+doorGroup.add(box(9.5, 0.4, 0.4, trimMat, 0, DOOR_H+0.1, frontDoorZ));
+// vertical trim between the two door leaves so the join reads as a real door frame
+doorGroup.add(box(0.25, DOOR_H, 0.3, trimMat, 0, DOOR_H/2, frontDoorZ));
+// simple metal handles
+const handleMat = new THREE.MeshStandardMaterial({ color:0xd4a545, roughness:0.3, metalness:0.85 });
+doorGroup.add(box(0.35, 0.12, 0.12, handleMat, -0.6, DOOR_H*0.45, frontDoorZ - 0.18));
+doorGroup.add(box(0.35, 0.12, 0.12, handleMat, 0.6, DOOR_H*0.45, frontDoorZ - 0.18));
 exteriorGroup.add(doorGroup);
 
 // side doors, on BOTH the left and right walls: one toward the dance floor, one
@@ -682,15 +690,35 @@ function buildStageStepsToDoor(xCenter, width, mat){
 }
 interiorGroup.add(buildStageStepsToDoor(-(stageCenterW/2 + stageEndW/2), stageEndW, stageMat));
 
-// pulpit (replaces the old altar table and plain pulpit box)
+// pulpit — carved wooden lectern with a moulded base, tapered column, angled
+// reading surface with a lip that stops a Bible from sliding off, plus a brass
+// reading light. Sits on the stage like a real church pulpit.
 function buildPulpit(x, z, baseY){
   const g = new THREE.Group();
-  const woodMat = new THREE.MeshPhysicalMaterial({ color:0x5a3a22, roughness:0.55, metalness:0.05, clearcoat:0.3, clearcoatRoughness:0.4 });
-  const pedestal = box(1.0, 1.3, 0.8, woodMat, 0, 0.65, 0);
-  g.add(pedestal);
-  const readingTop = box(1.3, 0.15, 1.0, woodMat, 0, 1.4, 0.05);
-  readingTop.rotation.x = -0.3;
+  const woodDark = new THREE.MeshPhysicalMaterial({ color:0x4a2c17, roughness:0.42, metalness:0.02, clearcoat:0.55, clearcoatRoughness:0.25 });
+  const woodMid  = new THREE.MeshPhysicalMaterial({ color:0x6b4025, roughness:0.48, metalness:0.03, clearcoat:0.45, clearcoatRoughness:0.3 });
+  const brass    = new THREE.MeshStandardMaterial({ color:0xc9a34a, roughness:0.28, metalness:0.9 });
+  applyPbr(woodDark, 'wood'); applyPbr(woodMid, 'wood');
+  // stepped base plinth
+  g.add(box(1.35, 0.12, 1.05, woodDark, 0, 0.06, 0));
+  g.add(box(1.20, 0.10, 0.90, woodMid,  0, 0.17, 0));
+  // main column (tapered look via two stacked boxes)
+  g.add(box(0.85, 0.85, 0.65, woodDark, 0, 0.65, 0));
+  g.add(box(0.95, 0.35, 0.75, woodMid,  0, 1.25, 0));
+  // moulded cap under the reading top
+  g.add(box(1.25, 0.08, 0.95, woodDark, 0, 1.46, 0));
+  // angled reading surface with a raised lip along the front edge
+  const readingTop = box(1.30, 0.06, 0.95, woodMid, 0, 1.56, 0.02);
+  readingTop.rotation.x = -0.28;
   g.add(readingTop);
+  const lip = box(1.30, 0.09, 0.05, woodDark, 0, 1.48, -0.42);
+  lip.rotation.x = -0.28;
+  g.add(lip);
+  // brass reading light on a slim arm
+  g.add(box(0.05, 0.55, 0.05, brass, 0.5, 1.80, 0.0));
+  const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, 0.12, 12), brass);
+  shade.position.set(0.5, 2.05, 0.15); shade.rotation.x = -0.4;
+  shade.castShadow = true; g.add(shade);
   g.position.set(x, baseY, z);
   return g;
 }
@@ -704,7 +732,39 @@ const logoTexture = new THREE.TextureLoader().load('data:image/png;base64,iVBORw
 const logoAspect = 1200/310;
 const logoW = W - 4; // full stage width
 const logoH = logoW / logoAspect;
-const logoMat = new THREE.MeshBasicMaterial({ map: logoTexture, transparent: true, side: THREE.DoubleSide });
+logoTexture.colorSpace = THREE.SRGBColorSpace;
+const logoMat = new THREE.MeshBasicMaterial({ map: logoTexture, transparent: true, side: THREE.DoubleSide, color: 0xd8d8d8 });
+// Post-process the logo bitmap: pump saturation up ~55% and drop brightness ~15%
+// so the front-of-stage logo reads richer without glowing under the HDRI.
+(function boostLogo(){
+  const img = logoTexture.image;
+  if(!img || !img.complete || !img.width){ return setTimeout(boostLogo, 60); }
+  try{
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const cx = c.getContext('2d');
+    cx.drawImage(img, 0, 0);
+    const d = cx.getImageData(0,0,c.width,c.height);
+    const a = d.data, sat = 1.55, bright = 0.85;
+    for(let i=0;i<a.length;i+=4){
+      let r=a[i]/255, g=a[i+1]/255, b=a[i+2]/255;
+      const l = 0.299*r + 0.587*g + 0.114*b;
+      r = (l + (r-l)*sat) * bright;
+      g = (l + (g-l)*sat) * bright;
+      b = (l + (b-l)*sat) * bright;
+      a[i]   = Math.max(0, Math.min(255, r*255));
+      a[i+1] = Math.max(0, Math.min(255, g*255));
+      a[i+2] = Math.max(0, Math.min(255, b*255));
+    }
+    cx.putImageData(d, 0, 0);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = maxAniso;
+    logoMat.map = t;
+    logoMat.color.setRGB(1, 1, 1);
+    logoMat.needsUpdate = true;
+  } catch(e){ /* cross-origin taint — leave original */ }
+})();
 const logoMesh = new THREE.Mesh(new THREE.PlaneGeometry(logoW, logoH), logoMat);
 logoMesh.rotation.y = Math.PI; // face the congregation instead of showing the mirrored back face
 logoMesh.position.set(0, DOOR_H + 1 + logoH/2, stageZEnd - 0.1); // well above door height
@@ -749,8 +809,10 @@ function buildKeyboard(x, z, baseY){
 }
 const danceHalfW = (W-4)/2;
 const danceMidZ = (danceZStart+danceZEnd)/2;
-interiorGroup.add(buildDrumKit(-danceHalfW+1.6, danceMidZ, 0.39));  // left end
-interiorGroup.add(buildKeyboard( danceHalfW-1.6, danceMidZ, 0.39)); // right end
+// instruments live ON the stage, tucked toward the back so they don't block the pulpit
+const bandZ = stageZEnd - 2.6;
+interiorGroup.add(buildDrumKit(-(W/2 - 4.5), bandZ, stageHeight));
+interiorGroup.add(buildKeyboard( (W/2 - 4.5), bandZ, stageHeight));
 
 // individual chairs within a block (rows of single chairs, not benches)
 function addChairBlock(xStart, blockW){
@@ -770,7 +832,7 @@ function addChairBlock(xStart, blockW){
       // seat
       interiorGroup.add(box(chairW, seatH, rowDepth, pewMat, cx, baseY + seatH/2, z, false));
       // backrest, set at the rear edge of the seat
-      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z + rowDepth/2 - backT/2, false));
+      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z - rowDepth/2 + backT/2, false));
     }
     z += gap + rowDepth;
   }
@@ -801,15 +863,27 @@ function galleryTierY(z){
   return galleryLowestY;
 }
 
-// floor slab per tier
-tierPlatforms.forEach(t=>{
-  interiorGroup.add(box(W-2.4, 0.4, t.zEnd - t.zStart, galleryMat, 0, t.y, (t.zStart+t.zEnd)/2, false));
+// floor slab per tier. The first (topmost, backmost) tier sits above both
+// gallery staircases, so its slab is narrowed to leave open stair-wells on
+// each side; the wide slabs resume from the second tier onward.
+const stairWellW = 4.2; // clearance on each side for the stair to open through
+tierPlatforms.forEach((t, idx)=>{
+  const depth = t.zEnd - t.zStart;
+  const centerZ = (t.zStart+t.zEnd)/2;
+  if(idx === 0){
+    const centerW = W - 2*stairWellW;
+    interiorGroup.add(box(centerW, 0.4, depth, galleryMat, 0, t.y, centerZ, false));
+  } else {
+    interiorGroup.add(box(W-2.4, 0.4, depth, galleryMat, 0, t.y, centerZ, false));
+  }
 });
 
 // aisle strips overlaid on the tiers, in the same X positions as the ground floor aisles
 const galleryAisleXs = [xLeftWallAisle+aisleW/2, xAisle1+aisleW/2, xAisle2+aisleW/2, xRightWallAisle+aisleW/2];
-tierPlatforms.forEach(t=>{
+tierPlatforms.forEach((t, idx)=>{
   galleryAisleXs.forEach(ax=>{
+    // skip the outer two aisles on the topmost tier — those are now open stair-wells
+    if(idx === 0 && (ax === galleryAisleXs[0] || ax === galleryAisleXs[3])) return;
     interiorGroup.add(box(aisleW, 0.05, t.zEnd - t.zStart, aisleMat, ax, t.y + 0.23, (t.zStart+t.zEnd)/2, false));
   });
 });
@@ -833,7 +907,7 @@ function addChairBlockTiered(xStart, blockW, zStart, zEnd){
     for(let i=0;i<nChairs;i++){
       const cx = firstX + i * pitch;
       interiorGroup.add(box(chairW, seatH, rowDepth, pewMat, cx, baseY + seatH/2, z, false));
-      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z + rowDepth/2 - backT/2, false));
+      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z - rowDepth/2 + backT/2, false));
     }
     z += gap + rowDepth;
   }
