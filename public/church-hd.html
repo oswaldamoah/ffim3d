@@ -452,11 +452,19 @@ exteriorGroup.add(makeWallWithWindows(W,WALL_H,0.6, 0, WALL_H/2, zFront, 0, 'x')
 
 const DOOR_H = 5.5; // uniform height for every door in the building
 
-// front doors (double door) centered on back wall
+// front doors (double door) centered on back wall — pushed flush with the outer
+// face of the wall so they never fight the wall's z-buffer while rotating
 const doorGroup = new THREE.Group();
-doorGroup.add(box(4.2, DOOR_H, 0.3, doorMat, -2.4, DOOR_H/2, zBack));
-doorGroup.add(box(4.2, DOOR_H, 0.3, doorMat, 2.4, DOOR_H/2, zBack));
-doorGroup.add(box(9.5, 0.4, 0.4, trimMat, 0, DOOR_H+0.1, zBack));
+const frontDoorZ = zBack - 0.32;
+doorGroup.add(box(4.2, DOOR_H, 0.25, doorMat, -2.4, DOOR_H/2, frontDoorZ));
+doorGroup.add(box(4.2, DOOR_H, 0.25, doorMat, 2.4, DOOR_H/2, frontDoorZ));
+doorGroup.add(box(9.5, 0.4, 0.4, trimMat, 0, DOOR_H+0.1, frontDoorZ));
+// vertical trim between the two door leaves so the join reads as a real door frame
+doorGroup.add(box(0.25, DOOR_H, 0.3, trimMat, 0, DOOR_H/2, frontDoorZ));
+// simple metal handles
+const handleMat = new THREE.MeshStandardMaterial({ color:0xd4a545, roughness:0.3, metalness:0.85 });
+doorGroup.add(box(0.35, 0.12, 0.12, handleMat, -0.6, DOOR_H*0.45, frontDoorZ - 0.18));
+doorGroup.add(box(0.35, 0.12, 0.12, handleMat, 0.6, DOOR_H*0.45, frontDoorZ - 0.18));
 exteriorGroup.add(doorGroup);
 
 // side doors, on BOTH the left and right walls: one toward the dance floor, one
