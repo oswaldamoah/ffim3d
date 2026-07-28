@@ -732,7 +732,39 @@ const logoTexture = new THREE.TextureLoader().load('data:image/png;base64,iVBORw
 const logoAspect = 1200/310;
 const logoW = W - 4; // full stage width
 const logoH = logoW / logoAspect;
-const logoMat = new THREE.MeshBasicMaterial({ map: logoTexture, transparent: true, side: THREE.DoubleSide });
+logoTexture.colorSpace = THREE.SRGBColorSpace;
+const logoMat = new THREE.MeshBasicMaterial({ map: logoTexture, transparent: true, side: THREE.DoubleSide, color: 0xd8d8d8 });
+// Post-process the logo bitmap: pump saturation up ~55% and drop brightness ~15%
+// so the front-of-stage logo reads richer without glowing under the HDRI.
+(function boostLogo(){
+  const img = logoTexture.image;
+  if(!img || !img.complete || !img.width){ return setTimeout(boostLogo, 60); }
+  try{
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const cx = c.getContext('2d');
+    cx.drawImage(img, 0, 0);
+    const d = cx.getImageData(0,0,c.width,c.height);
+    const a = d.data, sat = 1.55, bright = 0.85;
+    for(let i=0;i<a.length;i+=4){
+      let r=a[i]/255, g=a[i+1]/255, b=a[i+2]/255;
+      const l = 0.299*r + 0.587*g + 0.114*b;
+      r = (l + (r-l)*sat) * bright;
+      g = (l + (g-l)*sat) * bright;
+      b = (l + (b-l)*sat) * bright;
+      a[i]   = Math.max(0, Math.min(255, r*255));
+      a[i+1] = Math.max(0, Math.min(255, g*255));
+      a[i+2] = Math.max(0, Math.min(255, b*255));
+    }
+    cx.putImageData(d, 0, 0);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = maxAniso;
+    logoMat.map = t;
+    logoMat.color.setRGB(1, 1, 1);
+    logoMat.needsUpdate = true;
+  } catch(e){ /* cross-origin taint — leave original */ }
+})();
 const logoMesh = new THREE.Mesh(new THREE.PlaneGeometry(logoW, logoH), logoMat);
 logoMesh.rotation.y = Math.PI; // face the congregation instead of showing the mirrored back face
 logoMesh.position.set(0, DOOR_H + 1 + logoH/2, stageZEnd - 0.1); // well above door height
