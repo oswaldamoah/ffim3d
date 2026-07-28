@@ -77,7 +77,8 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -86,8 +87,8 @@ import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 const wrap = document.getElementById('canvas-wrap');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xdfeaf3);
-scene.fog = new THREE.Fog(0xdfeaf3, 120, 260);
+scene.background = new THREE.Color(0xb9cddc);
+scene.fog = new THREE.Fog(0xb9cddc, 90, 240);
 
 const camera = new THREE.PerspectiveCamera(45, wrap.clientWidth/wrap.clientHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias:true });
@@ -99,34 +100,146 @@ wrap.appendChild(renderer.domElement);
 // ---- HD renderer pipeline ----
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMappingExposure = 0.72;               // dial back overall brightness
+renderer.shadowMap.type = THREE.VSMShadowMap;      // buttery soft shadows
 renderer.physicallyCorrectLights = true;
+const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
-// Image-based lighting from a procedural room environment (no external HDRI download).
-const pmrem = new THREE.PMREMGenerator(renderer);
-pmrem.compileEquirectangularShader();
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+// KTX2 loader: infrastructure for compressed .ktx2 (Basis) textures.
+// Any texture served as .ktx2 can be loaded via ktx2Loader.load(url, cb).
+const ktx2Loader = new KTX2Loader()
+  .setTranscoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/basis/')
+  .detectSupport(renderer);
 
-// Post-processing composer: SSAO -> Bloom -> SMAA -> OutputPass (handles tone mapping + sRGB).
+// ---------- Procedural PBR maps ----------
+// Baked at load time from canvas noise -> proper micro-variation without any
+// texture downloads. Each material gets its own set (albedo tint + roughness
+// + normal) so nothing reads as flat plastic anymore.
+function hash(x, y, seed){
+  let h = Math.sin(x*127.1 + y*311.7 + seed*74.7) * 43758.5453;
+  return h - Math.floor(h);
+}
+function fbm(x, y, seed){
+  let v=0, a=0.5, f=1;
+  for(let i=0;i<5;i++){
+    const xi=Math.floor(x*f), yi=Math.floor(y*f);
+    const xf=x*f-xi, yf=y*f-yi;
+    const u=xf*xf*(3-2*xf), vv=yf*yf*(3-2*yf);
+    const a00=hash(xi,yi,seed), a10=hash(xi+1,yi,seed);
+    const a01=hash(xi,yi+1,seed), a11=hash(xi+1,yi+1,seed);
+    const n = a00*(1-u)*(1-vv) + a10*u*(1-vv) + a01*(1-u)*vv + a11*u*vv;
+    v += n*a; a*=0.5; f*=2;
+  }
+  return v;
+}
+function makeMap(size, seed, fn){
+  const c = document.createElement('canvas'); c.width=c.height=size;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  for(let y=0;y<size;y++) for(let x=0;x<size;x++){
+    const i = (y*size+x)*4;
+    const [r,g,b] = fn(x/size, y/size, seed);
+    img.data[i]=r; img.data[i+1]=g; img.data[i+2]=b; img.data[i+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = maxAniso;
+  return t;
+}
+// height -> normal derivation (central differences)
+function normalFromHeight(size, seed, freq, strength){
+  const h = new Float32Array(size*size);
+  for(let y=0;y<size;y++) for(let x=0;x<size;x++){
+    h[y*size+x] = fbm(x/size*freq, y/size*freq, seed);
+  }
+  return makeMap(size, seed, (u,v)=>{
+    const x = Math.min(size-1, Math.floor(u*size));
+    const y = Math.min(size-1, Math.floor(v*size));
+    const l = h[y*size + Math.max(0,x-1)];
+    const r = h[y*size + Math.min(size-1,x+1)];
+    const d = h[Math.max(0,y-1)*size + x];
+    const uu = h[Math.min(size-1,y+1)*size + x];
+    const nx = (l-r)*strength;
+    const ny = (d-uu)*strength;
+    const nz = 1;
+    const len = Math.hypot(nx,ny,nz);
+    return [ (nx/len*0.5+0.5)*255, (ny/len*0.5+0.5)*255, (nz/len*0.5+0.5)*255 ];
+  });
+}
+function roughFromNoise(size, seed, freq, base, variance){
+  return makeMap(size, seed, (u,v)=>{
+    const n = fbm(u*freq, v*freq, seed);
+    const r = Math.max(0, Math.min(1, base + (n-0.5)*variance));
+    const g = Math.floor(r*255);
+    return [g,g,g];
+  });
+}
+function tintFromNoise(size, seed, freq, r,g,b, variance){
+  return makeMap(size, seed, (u,vv)=>{
+    const n = (fbm(u*freq, vv*freq, seed) - 0.5) * variance;
+    const clamp=v=>Math.max(0,Math.min(255, v*255 + n*255));
+    return [clamp(r), clamp(g), clamp(b)];
+  });
+}
+
+// A cached PBR map set per surface archetype.
+const pbr = {
+  plaster: { n: normalFromHeight(512, 11, 8,  1.4), r: roughFromNoise(512, 11, 6,  0.86, 0.18), repeat: 6 },
+  stone:   { n: normalFromHeight(512, 22, 14, 2.2), r: roughFromNoise(512, 22, 10, 0.80, 0.28), repeat: 4 },
+  roof:    { n: normalFromHeight(512, 33, 22, 2.8), r: roughFromNoise(512, 33, 14, 0.70, 0.20), repeat: 8 },
+  wood:    { n: normalFromHeight(1024, 44, 6,  1.0), r: roughFromNoise(1024, 44, 4,  0.55, 0.24), repeat: 3 },
+  marble:  { n: normalFromHeight(1024, 55, 5,  0.5), r: roughFromNoise(1024, 55, 3,  0.28, 0.10), repeat: 4 },
+  fabric:  { n: normalFromHeight(512, 66, 30, 1.2), r: roughFromNoise(512, 66, 20, 0.75, 0.14), repeat: 3 },
+  metal:   { n: normalFromHeight(512, 77, 18, 0.6), r: roughFromNoise(512, 77, 8,  0.40, 0.20), repeat: 5 },
+  grass:   { n: normalFromHeight(512, 88, 40, 2.0), r: roughFromNoise(512, 88, 30, 0.95, 0.12), repeat: 24 },
+};
+function applyPbr(mat, kind){
+  const p = pbr[kind]; if(!p) return mat;
+  const nm = p.n.clone(); nm.needsUpdate = true;
+  const rm = p.r.clone(); rm.needsUpdate = true;
+  nm.wrapS = nm.wrapT = rm.wrapS = rm.wrapT = THREE.RepeatWrapping;
+  nm.repeat.set(p.repeat, p.repeat);
+  rm.repeat.set(p.repeat, p.repeat);
+  nm.anisotropy = rm.anisotropy = maxAniso;
+  mat.normalMap = nm;
+  mat.normalScale = new THREE.Vector2(0.6, 0.6);
+  mat.roughnessMap = rm;
+  mat.envMapIntensity = 0.9;
+  mat.needsUpdate = true;
+  return mat;
+}
+
+// Real HDRI environment (CORS-enabled from threejs.org). Warm sunset for
+// realistic reflections + ambient tint. Falls back silently on error.
+new RGBELoader()
+  .setPath('https://threejs.org/examples/textures/equirectangular/')
+  .load('venice_sunset_1k.hdr', (hdr) => {
+    hdr.mapping = THREE.EquirectangularReflectionMapping;
+    scene.environment = hdr;
+    scene.environmentIntensity = 0.55;
+  });
+
+// Post-processing composer: SSAO -> Bloom -> SMAA -> OutputPass.
 const composer = new EffectComposer(renderer);
 composer.setPixelRatio(Math.min(devicePixelRatio, 2));
 composer.setSize(wrap.clientWidth, wrap.clientHeight);
 composer.addPass(new RenderPass(scene, camera));
 const ssao = new SSAOPass(scene, camera, wrap.clientWidth, wrap.clientHeight);
-ssao.kernelRadius = 0.6;
-ssao.minDistance = 0.001;
-ssao.maxDistance = 0.08;
+ssao.kernelRadius = 0.9;
+ssao.minDistance = 0.002;
+ssao.maxDistance = 0.12;
 ssao.output = SSAOPass.OUTPUT.Default;
 composer.addPass(ssao);
-const bloom = new UnrealBloomPass(new THREE.Vector2(wrap.clientWidth, wrap.clientHeight), 0.35, 0.6, 0.9);
+// Subtler bloom: only genuine highlights bloom, keeps whites from blowing out.
+const bloom = new UnrealBloomPass(new THREE.Vector2(wrap.clientWidth, wrap.clientHeight), 0.18, 0.5, 0.95);
 composer.addPass(bloom);
 composer.addPass(new SMAAPass(wrap.clientWidth * devicePixelRatio, wrap.clientHeight * devicePixelRatio));
 composer.addPass(new OutputPass());
 
 // lighting
-// Warm golden-hour sun with high-res soft shadows.
-const sun = new THREE.DirectionalLight(0xfff1d6, 3.2);
+// Warm afternoon sun, dimmed so IBL does the heavy lifting.
+const sun = new THREE.DirectionalLight(0xffe6c2, 1.6);
 sun.position.set(45, 70, 35);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
@@ -135,10 +248,12 @@ sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
 sun.shadow.camera.near = 1; sun.shadow.camera.far = 220;
 sun.shadow.bias = -0.00015;
 sun.shadow.normalBias = 0.04;
-sun.shadow.radius = 6;
+sun.shadow.radius = 8;
+sun.shadow.blurSamples = 24;
 scene.add(sun);
-// Sky/ground bounce for realistic ambient tint.
-scene.add(new THREE.HemisphereLight(0xbcd4ea, 0x6b5a3e, 0.35));
+// Sky/ground bounce for realistic ambient tint (VSM-friendly).
+scene.add(new THREE.HemisphereLight(0xa8c4dc, 0x4a3f2e, 0.18));
+
 
 // ground
 const ground = new THREE.Mesh(
