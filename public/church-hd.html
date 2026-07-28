@@ -635,10 +635,25 @@ function buildAnnex(){
   g.add(annexStair);
 
   // door into the building, aligned with where its staircase is, same height as
-  // every other door
-  const annexDoorZ = cz-annexD/2+wallT/2;
-  g.add(box(sideWindowW, DOOR_H, 1.0, doorMat, -12, DOOR_H/2, annexDoorZ));
-  g.add(box(sideWindowW+0.4, 0.4, 1.1, trimMat, -12, DOOR_H+0.2, annexDoorZ));
+  // every other door. The door is a THIN solid slab mounted on the stage-facing
+  // face of the annex boundary wall (offset outward) so it never z-fights the
+  // wall itself, and a matching slab is placed on the annex-interior face so
+  // both sides read as a single solid door.
+  const annexBoundaryFrontZ = cz - annexD/2;              // stage-side face of boundary wall
+  const annexBoundaryBackZ  = cz - annexD/2 + wallT;      // annex-side face of boundary wall
+  const doorSlabT = 0.12;
+  const doorFrameW = sideWindowW + 0.35;
+  // stage-facing leaf (visible from the sanctuary/stage)
+  g.add(box(doorFrameW, DOOR_H, doorSlabT, doorMat, -12, DOOR_H/2, annexBoundaryFrontZ - doorSlabT/2 - 0.01));
+  // annex-facing leaf (visible from inside the annex)
+  g.add(box(doorFrameW, DOOR_H, doorSlabT, doorMat, -12, DOOR_H/2, annexBoundaryBackZ  + doorSlabT/2 + 0.01));
+  // stone frame trim above both faces
+  g.add(box(doorFrameW + 0.4, 0.4, doorSlabT + 0.05, trimMat, -12, DOOR_H + 0.2, annexBoundaryFrontZ - doorSlabT/2 - 0.01));
+  g.add(box(doorFrameW + 0.4, 0.4, doorSlabT + 0.05, trimMat, -12, DOOR_H + 0.2, annexBoundaryBackZ  + doorSlabT/2 + 0.01));
+  // brass handles so the door reads as a solid piece, not just a plane
+  const doorHandleMat = new THREE.MeshStandardMaterial({ color:0xb8892a, roughness:0.35, metalness:0.9 });
+  g.add(box(0.35, 0.12, 0.12, doorHandleMat, -12 + doorFrameW*0.35, DOOR_H*0.45, annexBoundaryFrontZ - doorSlabT - 0.06));
+  g.add(box(0.35, 0.12, 0.12, doorHandleMat, -12 + doorFrameW*0.35, DOOR_H*0.45, annexBoundaryBackZ  + doorSlabT + 0.06));
 
   return g;
 }
