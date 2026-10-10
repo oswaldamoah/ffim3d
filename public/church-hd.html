@@ -22,18 +22,12 @@
     display:flex; align-items:center; justify-content:space-between; gap:14px;
     font-weight:bold; cursor:pointer; user-select:none;
   }
-  #legend .panel-header { margin-bottom:4px; }
   .collapse-btn {
     border:1px solid #ccc; background:#fff; border-radius:5px; width:22px; height:22px;
     line-height:20px; text-align:center; font-size:13px; cursor:pointer; color:#2b4a7a; flex:none;
   }
-  #ui.collapsed .panel-body, #legend.collapsed .panel-body { display:none; }
-  #ui.collapsed, #legend.collapsed { padding-bottom:10px; }
-  #hint { position:absolute; bottom:12px; left:14px; z-index:10; color:#333; font-size:12px;
-    background:rgba(255,255,255,0.85); padding:6px 10px; border-radius:8px; }
-  #legend { position:absolute; top:14px; right:14px; z-index:10; background:rgba(255,255,255,0.92);
-    border-radius:10px; padding:10px 14px; font-size:12px; color:#333; line-height:1.6; box-shadow:0 2px 10px rgba(0,0,0,0.15); }
-  #legend div span { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:middle; }
+  #ui.collapsed .panel-body { display:none; }
+  #ui.collapsed { padding-bottom:10px; }
 </style>
 </head>
 <body>
@@ -51,21 +45,6 @@
       <button id="btn-tour" title="Slowly orbit the interior view, then ease into the floor plan">&#9654; Auto Tour</button>
     </div>
   </div>
-  <div id="legend">
-    <div class="panel-header" id="legend-header">
-      <span>Legend</span>
-      <span class="collapse-btn" id="legend-toggle">&minus;</span>
-    </div>
-    <div class="panel-body" id="legend-body">
-      <div><span style="background:#8a6a4a"></span>Single-chair seating (3 blocks)</div>
-      <div><span style="background:#c9a05a"></span>Walkways (x4)</div>
-      <div><span style="background:#b2536e"></span>Dance floor</div>
-      <div><span style="background:#7b5ba3"></span>Stage / altar</div>
-      <div><span style="background:#4d7ea8"></span>Gallery (upper level)</div>
-      <div><span style="background:#d9c9a3"></span>Offices (4 floors, at the back)</div>
-    </div>
-  </div>
-  <div id="hint">Drag to rotate · Scroll to zoom · Right-drag to pan</div>
 </div>
 
 <script type="importmap">
@@ -1117,7 +1096,6 @@ function makeCollapsible(panelId, headerId, toggleId){
   });
 }
 makeCollapsible('ui', 'ui-header', 'ui-toggle');
-makeCollapsible('legend', 'legend-header', 'legend-toggle');
 
 // ===================== VIEW MODES =====================
 const btnExt = document.getElementById('btn-ext');
