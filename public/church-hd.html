@@ -1047,6 +1047,7 @@ interiorGroup.add(buildStackedDogLeg( W/2-0.3-stairTreadW/2, -1, railMat));
 // 4 ft further back over the cantilever. Each floor has doors in its front wall
 // onto the stair landings, plus a central doorway on the ground floor
 const stairDoorXs = [-1,1].map(sd=> sd*(W/2 - 0.3 - stairBlockW/2));
+const officeLeftWalls = []; // the office block's left side walls, one per floor
 function buildOfficeBlock(){
   const g = new THREE.Group();
   const wT = 0.25, H = OFFICE_STOREY_H, doorH = 2.4;
@@ -1079,9 +1080,14 @@ function buildOfficeBlock(){
       if(openings.some(o=> Math.abs(wx-o.x) < o.w/2 + 1.0)) continue;
       framedPaneX(g, 1.6, 1.2, wT+0.1, wx, wy, officeFrontZ - wT/2);
     }
-    // side walls just inside the church walls
+    // side walls just inside the church walls; the left ones are tracked so they can
+    // be hidden with the church's left wall on the Interior view
     const zB = f>=2 ? officeCantBackZ : innerBackZ;
-    [-1,1].forEach(sd=> g.add(box(wT, H, officeFrontZ - zB, officeMat, sd*(wX/2 - wT/2), y0+H/2, (officeFrontZ+zB)/2)));
+    [-1,1].forEach(sd=>{
+      const sw = box(wT, H, officeFrontZ - zB, officeMat, sd*(wX/2 - wT/2), y0+H/2, (officeFrontZ+zB)/2);
+      g.add(sw);
+      if(sd < 0) officeLeftWalls.push(sw);
+    });
   }
   return g;
 }
@@ -1137,6 +1143,7 @@ btnExt.onclick = ()=>{
   exteriorGroup.children.forEach(c=>c.visible=true);
   roofPieces.forEach(p=>p.visible=true);
   leftWallMesh.visible = true;
+  officeLeftWalls.forEach(w=>w.visible=true);
   leftWallDoors.forEach(d=>d.visible=true);
   wallPillars.forEach(p=>p.visible=true);
   gallerySupportsBack.forEach(p=>p.visible=true);
@@ -1148,6 +1155,7 @@ function applyInteriorVisibility(){
   interiorGroup.visible = true;
   roofPieces.forEach(p=>p.visible=false);
   leftWallMesh.visible = false;
+  officeLeftWalls.forEach(w=>w.visible=false); // office side wall removed too, to see into the offices
   leftWallDoors.forEach(d=>d.visible=false); // no wall there, so no doors either
   frontWallMesh.visible = true;
   backWallMesh.visible = false; // wall at the back of the church removed for Interior
@@ -1170,6 +1178,7 @@ function applyCutawayVisibility(){
   doorGroup.visible = false;
   roofPieces.forEach(p=>p.visible=true);
   leftWallMesh.visible = true;
+  officeLeftWalls.forEach(w=>w.visible=true);
   leftWallDoors.forEach(d=>d.visible=true);
   wallPillars.forEach(p=>p.visible=true);
   wallPillars[0].visible = false;  // the 2 back-most pillars (one per side)
@@ -1182,6 +1191,7 @@ function applyTopVisibility(){
   interiorGroup.visible = true;
   roofPieces.forEach(p=>p.visible=false);
   leftWallMesh.visible = true;
+  officeLeftWalls.forEach(w=>w.visible=true);
   leftWallDoors.forEach(d=>d.visible=true);
   frontWallMesh.visible = true;
   backWallMesh.visible = false; // wall at the back (entrance end) removed for the floor plan
