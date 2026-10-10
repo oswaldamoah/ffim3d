@@ -62,6 +62,7 @@
       <div><span style="background:#b2536e"></span>Dance floor</div>
       <div><span style="background:#7b5ba3"></span>Stage / altar</div>
       <div><span style="background:#4d7ea8"></span>Gallery (upper level)</div>
+      <div><span style="background:#d9c9a3"></span>Offices (4 floors, at the back)</div>
     </div>
   </div>
   <div id="hint">Drag to rotate · Scroll to zoom · Right-drag to pan</div>
@@ -88,7 +89,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 const wrap = document.getElementById('canvas-wrap');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xb9cddc);
-scene.fog = new THREE.Fog(0xb9cddc, 90, 240);
+scene.fog = new THREE.Fog(0xb9cddc, 115, 300);
 
 const camera = new THREE.PerspectiveCamera(45, wrap.clientWidth/wrap.clientHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias:true });
@@ -261,7 +262,7 @@ ground.receiveShadow = true;
 scene.add(ground);
 
 // ------- simple orbit camera -------
-let camAngleY = 0.7, camAngleX = 0.45, camDist = 70, camTarget = new THREE.Vector3(0, 6, -3);
+let camAngleY = 0.7, camAngleX = 0.45, camDist = 90, camTarget = new THREE.Vector3(0, 6, 0);
 let dragging = false, panning = false, lastX=0, lastY=0;
 function updateCamera(){
   const x = camTarget.x + camDist * Math.sin(camAngleY) * Math.cos(camAngleX);
@@ -308,10 +309,33 @@ renderer.domElement.addEventListener('touchmove', e=>{
 
 // ------- dimensions -------
 const W = 30;      // building width (X)
-const L = 56;      // building length (Z)
+const L = 70;      // building length (Z): the auditorium now takes over the old annex footprint
 const WALL_H = 13;
 const zBack = -L/2;   // entrance end
 const zFront = L/2;   // stage end
+
+// ---- office block at the back (entrance end), between the two dog-leg stairs ----
+// dimensions were given in feet; model units are metres
+const FT = 0.3048;
+const OFFICE_FLOORS = 4;                          // ground, 1st, 2nd, 3rd
+const OFFICE_STOREY_H = 4.25;                     // 4 floors = 17, well above the 13-high auditorium
+const OFFICE_TOP = OFFICE_STOREY_H * OFFICE_FLOORS;
+const officeDepthLower = 19 * FT;                 // ground + 1st floor depth (19 ft)
+const officeDepthUpper = 23 * FT;                 // 2nd + 3rd floor depth (23 ft)
+const officeCantilever = officeDepthUpper - officeDepthLower; // 4 ft overhang to the back
+const backWallOuterZ = zBack - 0.3;
+const officeFrontZ = backWallOuterZ + officeDepthLower;      // face toward the auditorium
+const officeCantBackZ = backWallOuterZ - officeCantilever;   // rear face of the 2nd/3rd floors
+// dog-leg stairs either side of the offices, inside the auditorium
+const stairTreadW = 1.2, stairGap = 0.3, stairBlockW = stairTreadW*2 + stairGap;
+const stairStepsPerFlight = 9, stairTreadD = 0.3;
+const stairRun = stairStepsPerFlight * stairTreadD;
+const stairLandingD = stairTreadW + 0.4;
+const stairFloorLandingD = 1.2;                           // floor landing at each office level
+const stairZ0 = officeFrontZ + stairFloorLandingD;        // stairs sit wholly in front of the office wall line
+const stairEndZ = stairZ0 + stairRun + stairLandingD;     // far edge of the half landings
+const officeHalfW = W/2 - 0.3 - stairBlockW - 0.1;        // half-width of the space between the two stairs
+const officeOuterHalfW = W/2 - 0.3;                       // offices span the full inside width
 
 // aisle / block layout across X
 const aisleW = 2;
@@ -327,20 +351,20 @@ const block3W = 7;
 const xRightWallAisle = xBlock3 + block3W; // should equal W/2 - aisleW
 
 // Z zones
-const seatZStart = zBack + 6;   // leave room for gallery/entrance
+const seatZStart = stairEndZ + 2;   // seating starts just past the stairs
 
-// pillars run the length of the nave (8 per side); seating and the gallery are measured off them
-const pillarCountPerSide = 8;
+// pillars run the length of the nave (10 per side); seating and the gallery are measured off them
+const pillarCountPerSide = 10;
 const pillarZStart = seatZStart;
 const pillarZEnd = zFront - 2;
 const pillarStep = (pillarZEnd - pillarZStart) / (pillarCountPerSide - 1);
 const pillarZs = Array.from({ length: pillarCountPerSide }, (_, i) => pillarZStart + i * pillarStep);
 
-const seatZEnd = pillarZs[4];      // ground floor seating ends at the 5th pillar
+const seatZEnd = pillarZs[6];      // ground floor seating ends at the 7th pillar (longer auditorium)
 const galleryFrontZ = pillarZs[3]; // gallery extends back-to the 4th pillar from the back
 
 const danceZStart = seatZEnd;
-const danceZEnd = 15;
+const danceZEnd = zFront - 13;   // stage keeps its original depth
 const stageZStart = danceZEnd;
 const stageZEnd = zFront - 0.3;   // extended flush to the wall's inner face, closing the gap
 const pulpitZRef = zFront - 2;    // keeps the pulpit anchored where it was before the stage was extended
@@ -381,6 +405,17 @@ function box(w,h,d,mat,x,y,z,castShadow=true){
   m.position.set(x,y,z);
   m.castShadow = castShadow; m.receiveShadow = true;
   return m;
+}
+
+// a glass pane facing along Z with a trim frame round it, matching the framed
+// windows used on the main walls
+function framedPaneX(parent, w, h, d, x, y, z){
+  const f = 0.1;
+  parent.add(box(w, h, d, glassMat, x, y, z, false));
+  parent.add(box(w+2*f, f, d+0.02, trimMat, x, y+h/2+f/2, z));
+  parent.add(box(w+2*f, f, d+0.02, trimMat, x, y-h/2-f/2, z));
+  parent.add(box(f, h, d+0.02, trimMat, x-w/2-f/2, y, z));
+  parent.add(box(f, h, d+0.02, trimMat, x+w/2+f/2, y, z));
 }
 
 // a straight run of floating treads (matching the tread style used elsewhere in this
@@ -485,16 +520,23 @@ function makeWallWithWindows(w,h,d,x,y,z, windowCount, axis, doorZones){
   return g;
 }
 // side-wall door z-positions (world space) — used to punch windows out around doors
-const _sideWinW = L/(9*2.2);
+const SIDE_WIN_COUNT = 11;
+const _sideWinW = L/(SIDE_WIN_COUNT*2.2);
 const _danceDoorZ = (danceZStart+danceZEnd)/2;
-const _stairDoorZ = pillarZs[0];
+const _stairDoorZ = stairEndZ + 1.2; // just past the foot of the stairs
 const sideDoorZones = [
   { z: _danceDoorZ, half: _sideWinW }, // dance door is 2× window-width wide
   { z: _stairDoorZ, half: _sideWinW*0.5 },
 ];
-exteriorGroup.add(makeWallWithWindows(W,WALL_H,0.6, 0, WALL_H/2, zBack, 0, 'x')); // back wall (has door, handled below)
-exteriorGroup.add(makeWallWithWindows(0.6,WALL_H,L, -W/2, WALL_H/2, 0, 9, 'z', sideDoorZones)); // left wall
-exteriorGroup.add(makeWallWithWindows(0.6,WALL_H,L, W/2, WALL_H/2, 0, 9, 'z', sideDoorZones));  // right wall
+const backWallGroup = makeWallWithWindows(W,WALL_H,0.6, 0, WALL_H/2, zBack, 0, 'x');
+exteriorGroup.add(backWallGroup); // back wall (has door, handled below)
+// windows for the ground and 1st office floors, flanking the main doors
+[0,1].forEach(f=>{
+  const wy = f*OFFICE_STOREY_H + OFFICE_STOREY_H*0.55 - WALL_H/2;
+  [-9.5,-6.5,6.5,9.5].forEach(wx=> framedPaneX(backWallGroup, 1.6, 1.2, 0.64, wx, wy, 0));
+});
+exteriorGroup.add(makeWallWithWindows(0.6,WALL_H,L, -W/2, WALL_H/2, 0, SIDE_WIN_COUNT, 'z', sideDoorZones)); // left wall
+exteriorGroup.add(makeWallWithWindows(0.6,WALL_H,L, W/2, WALL_H/2, 0, SIDE_WIN_COUNT, 'z', sideDoorZones));  // right wall
 exteriorGroup.add(makeWallWithWindows(W,WALL_H,0.6, 0, WALL_H/2, zFront, 0, 'x')); // front wall (behind stage)
 
 const DOOR_H = 5.5; // uniform height for every door in the building
@@ -524,9 +566,9 @@ function buildSideDoor(x, z, w){
   g.add(box(thickness+0.1, 0.4, w+0.4, trimMat, x, DOOR_H+0.2, z));
   return g;
 }
-const sideWindowW = L/(9*2.2);   // matches the window sizing used in makeWallWithWindows
+const sideWindowW = L/(SIDE_WIN_COUNT*2.2);   // matches the window sizing used in makeWallWithWindows
 const danceDoorZ = (danceZStart+danceZEnd)/2;
-const stairDoorZ = pillarZs[0];
+const stairDoorZ = stairEndZ + 1.2; // just past the foot of the stairs
 exteriorGroup.add(buildSideDoor(W/2, danceDoorZ, sideWindowW*2));
 exteriorGroup.add(buildSideDoor(W/2, stairDoorZ, sideWindowW));
 // left-wall doors: kept separately, since they need to hide along with the left
@@ -540,7 +582,7 @@ leftWallDoors.forEach(d=>exteriorGroup.add(d));
 
 
 // hidden roof for the main church building: flat roof concealed behind a low
-// parapet wall on all four sides, matching the annex's roof treatment
+// parapet wall on all four sides, matching the office block's roof treatment
 const roofPieces = [];
 {
   const parapetH = 0.8, parapetT = 0.3;
@@ -554,95 +596,62 @@ const roofPieces = [];
   pieces.forEach(p=>{ exteriorGroup.add(p); roofPieces.push(p); });
 }
 
-// three-storey annex building, attached behind the stage (outside the front wall)
-let annexLeftWall = null;
-let annexStair = null;
-function buildAnnex(){
-  const g = new THREE.Group();
-  const storeyH = 5.5;
-  const annexW = W;   // same width as the church
-  const annexD = 14;
-  const totalH = storeyH * 3;
-  const cz = zFront + annexD/2; // flush against the front wall, extending outward
-  const wallT = 0.4;
+// office block materials
+const officeMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xd9c9a3, roughness:0.86, metalness:0.02 }), 'plaster');
+const officeSlabMat = applyPbr(new THREE.MeshStandardMaterial({ color:0x9a958c, roughness:0.75, metalness:0.03 }), 'stone');
 
-  // main volume, built as separate wall panels (no panel needed on the church-facing
-  // side, since it's flush against the church's own front wall) so any one side can
-  // be hidden independently
-  annexLeftWall = new THREE.Group();
-  annexLeftWall.add(box(wallT, totalH, annexD, wallMat, -annexW/2+wallT/2, totalH/2, cz));
-  // side door into the building, giving outside access straight to the staircase.
-  // Added as a child of annexLeftWall so it shows/hides together with that wall.
-  annexLeftWall.add(box(1.0, DOOR_H, sideWindowW, doorMat, -annexW/2+wallT/2, DOOR_H/2, cz-annexD/2+4));
-  annexLeftWall.add(box(1.1, 0.4, sideWindowW+0.4, trimMat, -annexW/2+wallT/2, DOOR_H+0.2, cz-annexD/2+4));
-  g.add(annexLeftWall);
-  const annexRightWall = box(wallT, totalH, annexD, wallMat, annexW/2-wallT/2, totalH/2, cz);
-  const annexRearWall = box(annexW, totalH, wallT, wallMat, 0, totalH/2, cz+annexD/2-wallT/2);
-  g.add(annexRightWall, annexRearWall);
-
-  // permanent boundary wall between the stage and the annex. This belongs to the
-  // annex itself (not the church's own front wall, which is hidden in Cutaway), so
-  // there's always a wall separating the stage from the building behind it
-  const annexBoundaryWall = box(annexW, totalH, wallT, wallMat, 0, totalH/2, cz-annexD/2+wallT/2);
-  g.add(annexBoundaryWall);
-
-  // floor division slabs, marking the lines between the three storeys (a little
-  // darker than the bright trim colour used elsewhere), plus a matching ground floor
-  const slabMat = new THREE.MeshStandardMaterial({ color:0x9a958c, roughness:0.75, metalness:0.03 });
-  g.add(box(annexW-0.06, 0.3, annexD-0.06, slabMat, 0, 0.15, cz, false));
-  g.add(box(annexW+0.06, 0.25, annexD+0.06, slabMat, 0, storeyH, cz, false));
-  g.add(box(annexW+0.06, 0.25, annexD+0.06, slabMat, 0, storeyH*2, cz, false));
-
-  // hidden roof: flat roof concealed behind a low parapet wall on all four sides,
-  // so no roof surface is visible from outside
-  const parapetH = 0.8, parapetT = 0.3;
-  const annexRoofPieces = [
-    box(annexW, parapetH, parapetT, wallMat, 0, totalH+parapetH/2, cz-annexD/2+parapetT/2),      // front parapet
-    box(annexW, parapetH, parapetT, wallMat, 0, totalH+parapetH/2, cz+annexD/2-parapetT/2),      // back parapet
-    box(parapetT, parapetH, annexD, wallMat, -annexW/2+parapetT/2, totalH+parapetH/2, cz),       // left parapet
-    box(parapetT, parapetH, annexD, wallMat,  annexW/2-parapetT/2, totalH+parapetH/2, cz),       // right parapet
-    box(annexW-2*parapetT, 0.15, annexD-2*parapetT, roofMat, 0, totalH+0.08, cz, false),         // recessed flat roof surface
-  ];
-  annexRoofPieces.forEach(p=>{ g.add(p); roofPieces.push(p); });
-
-  // window rows, one per storey, on both side faces and the rear face
-  function windowRow(y, along, fixedCoord, spanStart, spanEnd, count, parent){
-    const winW = 1.2, winH = 1.4;
-    for(let i=0;i<count;i++){
-      const t = (i+0.5)/count;
-      const pos = spanStart + t*(spanEnd-spanStart);
-      if(along === 'z'){
-        parent.add(box(0.1, winH, winW, glassMat, fixedCoord, y, pos, false));
-      } else {
-        parent.add(box(winW, winH, 0.1, glassMat, pos, y, fixedCoord, false));
-      }
-    }
+// office block exterior, across the full building width: the 2nd and 3rd floors
+// cantilever officeCantilever (4 ft) beyond the back wall over the main entrance,
+// and the block rises above the auditorium roof. The face above the roof has the
+// 3rd-floor doors onto the stair landings, matching the floors below.
+{
+  const t = 0.3, wX = W;
+  const y0 = OFFICE_STOREY_H*2;
+  const cz = (officeCantBackZ + backWallOuterZ)/2;
+  const fullD = officeFrontZ - officeCantBackZ;
+  const fullCZ = (officeFrontZ + officeCantBackZ)/2;
+  const upH = OFFICE_TOP - WALL_H;
+  // left-hand faces hide with the left wall on the Interior view
+  const addSide = (m, sd)=>{ exteriorGroup.add(m); if(sd<0) leftWallDoors.push(m); };
+  // soffit: a hair deeper than the overhang so its edge never fights the rear face's surface
+  exteriorGroup.add(box(wX+0.04, 0.35, officeCantilever+0.04, officeSlabMat, 0, y0, cz-0.02));          // soffit
+  exteriorGroup.add(box(wX, OFFICE_TOP - y0, t, officeMat, 0, (y0+OFFICE_TOP)/2, officeCantBackZ + t/2)); // rear face
+  [-1,1].forEach(sd=> addSide(box(t, WALL_H - y0, officeCantilever, officeMat, sd*(wX/2 - t/2), (y0+WALL_H)/2, cz), sd));
+  [-1,1].forEach(sd=> addSide(box(t, upH, fullD, officeMat, sd*(wX/2 - t/2), WALL_H + upH/2, fullCZ), sd));
+  // front face above the auditorium roof, with the 3rd-floor door openings
+  const doorH3 = OFFICE_STOREY_H*3 + 2.4;           // top of the 3rd-floor doors
+  const doorXs3 = [-1,1].map(sd=> sd*(W/2 - 0.3 - stairBlockW/2));
+  {
+    let x = -wX/2;
+    doorXs3.forEach(dx=>{
+      const l = dx - 0.8;
+      exteriorGroup.add(box(l-x, upH, t, officeMat, (x+l)/2, WALL_H + upH/2, officeFrontZ - t/2));
+      exteriorGroup.add(box(1.6, OFFICE_TOP - doorH3, t, officeMat, dx, (doorH3+OFFICE_TOP)/2, officeFrontZ - t/2));
+      x = dx + 0.8;
+    });
+    exteriorGroup.add(box(wX/2-x, upH, t, officeMat, (x+wX/2)/2, WALL_H + upH/2, officeFrontZ - t/2));
   }
-  const storey1Y = storeyH*0.55, storey2Y = storeyH*1.55, storey3Y = storeyH*2.55;
-  const zSpanStart = cz - annexD/2 + 2, zSpanEnd = cz + annexD/2 - 2;
-  [storey1Y, storey2Y, storey3Y].forEach(y=>{
-    windowRow(y, 'z', -annexW/2-0.06, zSpanStart, zSpanEnd, 3, annexLeftWall); // left face (hides with the left wall)
-    windowRow(y, 'z',  annexW/2+0.06, zSpanStart, zSpanEnd, 3, g); // right face
-    windowRow(y, 'x', cz+annexD/2+0.06, -annexW/2+2, annexW/2-2, 6, g); // rear face
+  [2,3].forEach(f=>{
+    const wy = OFFICE_STOREY_H*f + OFFICE_STOREY_H*0.5;
+    for(let i=0;i<9;i++){
+      const wx = -wX/2 + (i+0.5)*wX/9;
+      framedPaneX(exteriorGroup, 1.6, 1.4, 0.1, wx, wy, officeCantBackZ - 0.02);
+    }
   });
-
-  // staircase for the building, rising from ground to the top floor's slab. Flush
-  // against the left wall, and pushed well along it (away from the boundary wall)
-  // so the stage door opens onto clear floor instead of running straight into the
-  // stairs. Sits inside the building on the left, where the wall is removed on the
-  // Interior view.
-  annexStair = buildDogLegStair(-annexW/2+1.2, cz-annexD/2+4.5, storeyH*2, 9, 1.6, 0.5, doorMat, 1);
-  g.add(annexStair);
-
-  // door into the building, aligned with where its staircase is, same height as
-  // every other door
-  const annexDoorZ = cz-annexD/2+wallT/2;
-  g.add(box(sideWindowW, DOOR_H, 1.0, doorMat, -12, DOOR_H/2, annexDoorZ));
-  g.add(box(sideWindowW+0.4, 0.4, 1.1, trimMat, -12, DOOR_H+0.2, annexDoorZ));
-
-  return g;
+  for(let i=0;i<9;i++){
+    const wx = -wX/2 + (i+0.5)*wX/9;
+    if(doorXs3.some(dx=> Math.abs(wx-dx) < 1.8)) continue; // clear of the doors
+    framedPaneX(exteriorGroup, 1.6, 1.4, 0.1, wx, WALL_H + upH/2, officeFrontZ + 0.02);
+  }
+  const parapetH = 0.8, pY = OFFICE_TOP + parapetH/2;
+  [
+    box(wX, parapetH, t, officeMat, 0, pY, officeCantBackZ + t/2),
+    box(wX, parapetH, t, officeMat, 0, pY, officeFrontZ - t/2),
+    box(t, parapetH, fullD, officeMat, -(wX/2 - t/2), pY, fullCZ),
+    box(t, parapetH, fullD, officeMat,  (wX/2 - t/2), pY, fullCZ),
+    box(wX - 2*t, 0.15, fullD - 2*t, roofMat, 0, OFFICE_TOP + 0.08, fullCZ, false),
+  ].forEach(p=>{ exteriorGroup.add(p); roofPieces.push(p); });
 }
-exteriorGroup.add(buildAnnex());
 
 // ===================== INTERIOR =====================
 const floorMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xb8a17f, roughness:0.75, metalness:0.03 }), 'marble');
@@ -656,9 +665,9 @@ const railMat = applyPbr(new THREE.MeshStandardMaterial({ color:0x1e1e1e, roughn
 // base floor (whole footprint)
 interiorGroup.add(box(W-0.6, 0.3, L-0.6, floorMat, 0, 0.15, 0, false));
 
-// ground-floor seating tiers: one step down between each pair of adjacent pillars (1st-5th)
-const groundRiser = 0.3;
-const groundPillars = [pillarZs[0], pillarZs[1], pillarZs[2], pillarZs[3], pillarZs[4]]; // p1..p5
+// ground-floor seating tiers: one step down between each pair of adjacent pillars (1st-7th)
+const groundRiser = 0.2;
+const groundPillars = pillarZs.slice(0, 7); // p1..p7
 const groundTierPlatforms = [];
 for(let g=0; g<groundPillars.length-1; g++){
   const zS = groundPillars[g], zE = groundPillars[g+1];
@@ -717,25 +726,8 @@ function stageEndWithSteps(xCenter, backNotch=0){
     interiorGroup.add(box(stageEndW, stageHeight, flatDepth, stageMat, xCenter, stageHeight/2, flatZStart + flatDepth/2));
   }
 }
-const doorStepsNotch = 1.2; // depth reserved for the steps down to the building's door
-stageEndWithSteps(-(stageCenterW/2 + stageEndW/2), doorStepsNotch); // left end of the stage, notched for the door steps
-stageEndWithSteps( (stageCenterW/2 + stageEndW/2));                 // right end of the stage
-
-// steps down from the stage to the door leading into the building, since that
-// door's threshold sits at ground level while the stage stands stageHeight above
-// it. Fills the notch left in the stage's own geometry above, instead of being
-// buried inside it.
-function buildStageStepsToDoor(xCenter, width, mat){
-  const g = new THREE.Group();
-  const treadT = 0.15, dz = doorStepsNotch/3, steps = 3;
-  for(let i=0;i<steps;i++){
-    const y = stageHeight - (i+1)*(stageHeight/steps);
-    const zStart = stageZEnd - (steps-i)*dz;
-    g.add(box(width, treadT, dz, mat, xCenter, y+treadT/2, zStart+dz/2, false));
-  }
-  return g;
-}
-interiorGroup.add(buildStageStepsToDoor(-(stageCenterW/2 + stageEndW/2), stageEndW, stageMat));
+stageEndWithSteps(-(stageCenterW/2 + stageEndW/2)); // left end of the stage
+stageEndWithSteps( (stageCenterW/2 + stageEndW/2)); // right end of the stage
 
 // pulpit — carved wooden lectern with a moulded base, tapered column, angled
 // reading surface with a lip that stops a Bible from sliding off, plus a brass
@@ -890,10 +882,10 @@ addChairBlock(xBlock3, block3W);
 
 // first-floor gallery: raked tiers, stepping down twice between each pair of adjacent
 // pillars (1st-4th from the back), descending toward the rail overlooking the sanctuary
-const galleryTopY = 7.5;    // highest tier, at the very back
-const galleryRiser = 0.35;  // height of each individual step-down
+const galleryTopY = OFFICE_STOREY_H*1.5;  // middle of the 1st office floor (= the stairs' half landing there)
+const galleryRiser = 0.3;  // height of each individual step-down
 
-const galleryBoundaries = [zBack, pillarZs[0], pillarZs[1], pillarZs[2], pillarZs[3]]; // zBack, p1, p2, p3, p4
+const galleryBoundaries = [stairEndZ, pillarZs[0], pillarZs[1], pillarZs[2], pillarZs[3]]; // stair landings, p1..p4
 const tierPlatforms = [{ zStart: galleryBoundaries[0], zEnd: galleryBoundaries[1], y: galleryTopY }];
 let tierLevel = 0;
 for(let s=0; s<3; s++){
@@ -906,40 +898,35 @@ for(let s=0; s<3; s++){
 }
 const galleryLowestY = tierPlatforms[tierPlatforms.length-1].y;
 function galleryTierY(z){
+  if(z < tierPlatforms[0].zStart) return galleryTopY;
   for(const t of tierPlatforms){ if(z >= t.zStart && z < t.zEnd) return t.y; }
   return galleryLowestY;
 }
 
-// floor slab per tier. The first (topmost, backmost) tier sits above both
-// gallery staircases, so its slab is narrowed to leave open stair-wells on
-// each side; the wide slabs resume from the second tier onward.
-const stairWellW = 4.2; // clearance on each side for the stair to open through
-tierPlatforms.forEach((t, idx)=>{
-  const depth = t.zEnd - t.zStart;
-  const centerZ = (t.zStart+t.zEnd)/2;
-  if(idx === 0){
-    const centerW = W - 2*stairWellW;
-    interiorGroup.add(box(centerW, 0.4, depth, galleryMat, 0, t.y, centerZ, false));
-  } else {
-    interiorGroup.add(box(W-2.4, 0.4, depth, galleryMat, 0, t.y, centerZ, false));
-  }
+// floor slab per tier
+tierPlatforms.forEach(t=>{
+  interiorGroup.add(box(W-2.4, 0.4, t.zEnd - t.zStart, galleryMat, 0, t.y, (t.zStart+t.zEnd)/2, false));
 });
 
 // aisle strips overlaid on the tiers, in the same X positions as the ground floor aisles
 const galleryAisleXs = [xLeftWallAisle+aisleW/2, xAisle1+aisleW/2, xAisle2+aisleW/2, xRightWallAisle+aisleW/2];
-tierPlatforms.forEach((t, idx)=>{
+tierPlatforms.forEach(t=>{
   galleryAisleXs.forEach(ax=>{
-    // skip the outer two aisles on the topmost tier — those are now open stair-wells
-    if(idx === 0 && (ax === galleryAisleXs[0] || ax === galleryAisleXs[3])) return;
     interiorGroup.add(box(aisleW, 0.05, t.zEnd - t.zStart, aisleMat, ax, t.y + 0.23, (t.zStart+t.zEnd)/2, false));
   });
 });
 
 // gallery railing, at the front edge (4th pillar) overlooking the sanctuary
 interiorGroup.add(box(W-2.4, 0.9, 0.15, railMat, 0, galleryLowestY+0.65, galleryFrontZ));
+// top of the gallery between the two stairs, running right back to the office
+// front wall at mid-height of the 2nd floor, before the tiers descend
+interiorGroup.add(box(officeHalfW*2, 0.4, stairEndZ - officeFrontZ, galleryMat, 0, galleryTopY, (officeFrontZ+stairEndZ)/2, false));
+[xAisle1+aisleW/2, xAisle2+aisleW/2].forEach(ax=>{
+  interiorGroup.add(box(aisleW, 0.05, stairEndZ - officeFrontZ, aisleMat, ax, galleryTopY + 0.23, (officeFrontZ+stairEndZ)/2, false));
+});
 
 // gallery seating: single chairs in the same 3 blocks/aisles as the ground floor, resting on their tier
-function addChairBlockTiered(xStart, blockW, zStart, zEnd, isOuter){
+function addChairBlockTiered(xStart, blockW, zStart, zEnd){
   const rowDepth = 0.5, gap = 0.75;
   const seatH = 0.45, backH = 0.55, backT = 0.08;
   const chairW = 0.55, chairGap = 0.2;
@@ -948,29 +935,23 @@ function addChairBlockTiered(xStart, blockW, zStart, zEnd, isOuter){
   const usedW = nChairs * chairW + (nChairs - 1) * chairGap;
   const firstX = xStart + (blockW - usedW) / 2 + chairW / 2;
 
-  // topmost tier is the open stair-well zone on outer blocks — skip chairs
-  // whose z falls in that tier so seating never floats above the stairs.
-  const topTier = tierPlatforms[0];
-
   let z = zStart;
   while(z < zEnd){
-    if(!(isOuter && z >= topTier.zStart && z < topTier.zEnd)){
-      const baseY = galleryTierY(z);
-      for(let i=0;i<nChairs;i++){
-        const cx = firstX + i * pitch;
-        interiorGroup.add(box(chairW, seatH, rowDepth, pewMat, cx, baseY + seatH/2, z, false));
-        interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z - rowDepth/2 + backT/2, false));
-      }
+    const baseY = galleryTierY(z);
+    for(let i=0;i<nChairs;i++){
+      const cx = firstX + i * pitch;
+      interiorGroup.add(box(chairW, seatH, rowDepth, pewMat, cx, baseY + seatH/2, z, false));
+      interiorGroup.add(box(chairW, backH, backT, pewMat, cx, baseY + seatH + backH/2, z - rowDepth/2 + backT/2, false));
     }
     z += gap + rowDepth;
   }
 }
-addChairBlockTiered(xBlock1, block1W, zBack+2, galleryFrontZ-1, true);
-addChairBlockTiered(xBlock2, block2W, zBack+2, galleryFrontZ-1, false);
-addChairBlockTiered(xBlock3, block3W, zBack+2, galleryFrontZ-1, true);
+addChairBlockTiered(xBlock1, block1W, stairEndZ+1, galleryFrontZ-1);
+addChairBlockTiered(xBlock2, block2W, officeFrontZ+0.8, galleryFrontZ-1);
+addChairBlockTiered(xBlock3, block3W, stairEndZ+1, galleryFrontZ-1);
 
 // support columns under the gallery (tallest at the back, shortest at the front where it's lowest)
-const gallerySupportsBack = [[W/2-3, zBack+1, galleryTopY]]
+const gallerySupportsBack = [[W/2-3, stairEndZ+0.5, galleryTopY]]
   .map(([x,zc,h])=>{ const m = box(0.6, h, 0.6, railMat, x, h/2, zc); interiorGroup.add(m); return m; });
 const gallerySupportsFar = [[-W/2+3, galleryFrontZ-1, galleryLowestY], [W/2-3, galleryFrontZ-1, galleryLowestY]]
   .map(([x,zc,h])=>{ const m = box(0.6, h, 0.6, railMat, x, h/2, zc); interiorGroup.add(m); return m; });
@@ -979,9 +960,9 @@ const gallerySupportsFar = [[-W/2+3, galleryFrontZ-1, galleryLowestY], [W/2-3, g
 // columns: one where the gallery starts, one at the end of the first third measured
 // from the front, one at the end of the second third, and one where the gallery
 // ends (closest to the stage)
-const galleryThird = (galleryFrontZ - zBack) / 3;
+const galleryThird = (galleryFrontZ - stairEndZ) / 3;
 const gallerySupportsLeftRun = [
-  zBack + 1,                        // where the gallery starts
+  stairEndZ + 0.5,                  // where the gallery starts
   galleryFrontZ - 2*galleryThird,   // end of the second third (from the front)
   galleryFrontZ - galleryThird,     // end of the first third (from the front)
   galleryFrontZ - 1,                // where the gallery ends, close to the stage
@@ -992,13 +973,121 @@ const gallerySupportsLeftRun = [
   return m;
 });
 
-// staircase at the back of the church, rising from the ground floor up to gallery height
-// dog-leg staircases at the back of the church, on both sides. The left one sits
-// where the wall is removed on the Interior view; the right one mirrors it.
-interiorGroup.add(buildDogLegStair(-W/2+1.5, zBack+2, galleryTopY, 8, 1.2, 0.5, railMat, 1));
-interiorGroup.add(buildDogLegStair( W/2-1.5, zBack+2, galleryTopY, 8, 1.2, 0.5, railMat, -1));
+// stacked dog-leg stairs, one each side of the offices, inside the auditorium.
+// Each storey: a flight forward to a half landing, a turn, and a flight back that
+// ends on a floor landing at the office door on that floor. The 2nd-floor half
+// landing sits at gallery level and opens onto the gallery. Nothing enters the
+// office footprint: the floor landings stop at the office wall line.
+const handrailMat = applyPbr(new THREE.MeshStandardMaterial({ color:0xc0c0c0, roughness:0.3, metalness:0.85 }), 'metal');
+function buildStackedDogLeg(xFlight1, mirror, mat){
+  const g = new THREE.Group();
+  const treadT = 0.18, halfRise = OFFICE_STOREY_H/2;
+  const flight2X = xFlight1 + mirror*(stairTreadW + stairGap);
+  const blockCX = (xFlight1 + flight2X)/2;
+  const innerX = blockCX + mirror*(stairBlockW/2 - 0.04);   // open edge, toward the room's centre
+  const railY = 0.95;                                       // handrail height above the walking surface
+  // level guard rail along a landing edge: top rail plus balusters
+  function railLine(x1, z1, x2, z2, yFloor){
+    const dx = x2-x1, dz = z2-z1, len = Math.hypot(dx, dz);
+    g.add(box(Math.abs(dx) > 0.001 ? len : 0.06, 0.06, Math.abs(dz) > 0.001 ? len : 0.06, handrailMat, (x1+x2)/2, yFloor+railY, (z1+z2)/2, false));
+    const n = Math.max(1, Math.round(len/0.6));
+    for(let k=0;k<=n;k++){
+      const t = k/n;
+      g.add(box(0.04, railY, 0.04, handrailMat, x1+dx*t, yFloor+railY/2, z1+dz*t, false));
+    }
+  }
+  function flight(x, yStart, zStart, dir, outerSide){
+    for(let i=0;i<stairStepsPerFlight;i++){
+      const y = yStart + (i+1)*(halfRise/stairStepsPerFlight);
+      const z = zStart + dir*(i+0.5)*stairTreadD;
+      g.add(box(stairTreadW, treadT, stairTreadD, mat, x, y-treadT/2, z, false));
+    }
+    // sloping stringer under the outer edge
+    const len = Math.hypot(stairRun, halfRise);
+    const st = box(0.12, 0.3, len, mat, x + outerSide*(stairTreadW/2-0.06), yStart + halfRise/2 - 0.1, zStart + dir*stairRun/2, false);
+    st.rotation.x = -dir*Math.atan2(halfRise, stairRun);
+    g.add(st);
+    // handrails on both sides of the flight, sloping with it, on balusters
+    [-1,1].forEach(side=>{
+      const rx = x + side*(stairTreadW/2 - 0.04);
+      const r = box(0.06, 0.06, len, handrailMat, rx, yStart + halfRise/2 + railY, zStart + dir*stairRun/2, false);
+      r.rotation.x = -dir*Math.atan2(halfRise, stairRun);
+      g.add(r);
+      for(let i=0;i<stairStepsPerFlight;i+=2){
+        const yt = yStart + (i+1)*(halfRise/stairStepsPerFlight);
+        g.add(box(0.04, railY, 0.04, handrailMat, rx, yt + railY/2, zStart + dir*(i+0.5)*stairTreadD, false));
+      }
+    });
+  }
+  for(let f=0; f<OFFICE_FLOORS-1; f++){
+    const base = f*OFFICE_STOREY_H;
+    flight(xFlight1, base, stairZ0, 1, -mirror);
+    g.add(box(stairBlockW, treadT, stairLandingD, mat, blockCX, base+halfRise-treadT/2, stairZ0+stairRun+stairLandingD/2, false));
+    flight(flight2X, base+halfRise, stairZ0+stairRun, -1, mirror);
+    // guard rails on the half landing: the open inner side, and the front edge
+    // (left open on the 1st floor, where the landing leads onto the gallery)
+    const hY = base + halfRise;
+    railLine(innerX, stairZ0+stairRun, innerX, stairEndZ-0.04, hY);
+    if(f !== 1) railLine(blockCX - stairBlockW/2, stairEndZ-0.04, blockCX + stairBlockW/2, stairEndZ-0.04, hY);
+    // guard rail on the open inner side of the floor landing
+    railLine(innerX, officeFrontZ+0.04, innerX, stairZ0, base+OFFICE_STOREY_H);
+    // floor landing against the office front wall, at the door on that floor
+    g.add(box(stairBlockW, 0.2, stairFloorLandingD, mat, blockCX, base+OFFICE_STOREY_H-0.1, officeFrontZ+stairFloorLandingD/2, false));
+  }
+  // posts under the far corners of the half landings
+  const postH = (OFFICE_FLOORS-1.5)*OFFICE_STOREY_H;
+  [-1,1].forEach(sd=> g.add(box(0.15, postH, 0.15, mat, blockCX + sd*(stairBlockW/2-0.08), postH/2, stairEndZ-0.08, false)));
+  return g;
+}
+interiorGroup.add(buildStackedDogLeg(-W/2+0.3+stairTreadW/2,  1, railMat));
+interiorGroup.add(buildStackedDogLeg( W/2-0.3-stairTreadW/2, -1, railMat));
 
-// interior columns flanking the nave (decorative, 8 per side, embedded in the wall's
+// office block: four floors across the full inside width, entirely behind the
+// stair line. Ground and 1st floors are officeDepthLower deep; the 2nd and 3rd run
+// 4 ft further back over the cantilever. Each floor has doors in its front wall
+// onto the stair landings, plus a central doorway on the ground floor
+const stairDoorXs = [-1,1].map(sd=> sd*(W/2 - 0.3 - stairBlockW/2));
+function buildOfficeBlock(){
+  const g = new THREE.Group();
+  const wT = 0.25, H = OFFICE_STOREY_H, doorH = 2.4;
+  const innerBackZ = zBack + 0.3;
+  const wX = officeOuterHalfW*2;
+  for(let f=1; f<OFFICE_FLOORS; f++){
+    const zB = f>=2 ? officeCantBackZ : innerBackZ;
+    const zF = officeFrontZ - 0.03; // stop just inside the front wall's face to avoid z-fighting
+    g.add(box(wX - 0.06, 0.25, zF - zB, officeSlabMat, 0, f*H, (zF+zB)/2, false));
+  }
+  for(let f=0; f<OFFICE_FLOORS; f++){
+    const y0 = f*H;
+    const openings = stairDoorXs.map(x=>({x, w:1.6}));
+    if(f===0) openings.push({x:0, w:3});
+    openings.sort((a,b)=>a.x-b.x);
+    // front wall: solid piers between the door openings, with lintels over the doors
+    let x = -wX/2;
+    openings.forEach(o=>{
+      const l = o.x - o.w/2;
+      if(l > x) g.add(box(l-x, H, wT, officeMat, (x+l)/2, y0+H/2, officeFrontZ - wT/2));
+      g.add(box(o.w, H-doorH, wT, officeMat, o.x, y0+doorH+(H-doorH)/2, officeFrontZ - wT/2));
+      x = o.x + o.w/2;
+    });
+    if(x < wX/2) g.add(box(wX/2-x, H, wT, officeMat, (x+wX/2)/2, y0+H/2, officeFrontZ - wT/2));
+    // windows clear of the doors; on the 1st floor the gallery meets this wall at
+    // mid-height, so those windows sit higher
+    const wy = y0 + (f===1 ? H*0.8 : H*0.55);
+    for(let i=0;i<8;i++){
+      const wx = -wX/2 + (i+0.5)*wX/8;
+      if(openings.some(o=> Math.abs(wx-o.x) < o.w/2 + 1.0)) continue;
+      framedPaneX(g, 1.6, 1.2, wT+0.1, wx, wy, officeFrontZ - wT/2);
+    }
+    // side walls just inside the church walls
+    const zB = f>=2 ? officeCantBackZ : innerBackZ;
+    [-1,1].forEach(sd=> g.add(box(wT, H, officeFrontZ - zB, officeMat, sd*(wX/2 - wT/2), y0+H/2, (officeFrontZ+zB)/2)));
+  }
+  return g;
+}
+interiorGroup.add(buildOfficeBlock());
+
+// interior columns flanking the nave (decorative, 10 per side, embedded in the wall's
 // inner half only, so nothing pokes through to the exterior face)
 const wallPillars = [];
 [-(W/2-0.35), (W/2-0.35)].forEach(x=>{
@@ -1048,20 +1137,17 @@ btnExt.onclick = ()=>{
   exteriorGroup.children.forEach(c=>c.visible=true);
   roofPieces.forEach(p=>p.visible=true);
   leftWallMesh.visible = true;
-  annexLeftWall.visible = true;
   leftWallDoors.forEach(d=>d.visible=true);
   wallPillars.forEach(p=>p.visible=true);
   gallerySupportsBack.forEach(p=>p.visible=true);
   gallerySupportsFar.forEach(p=>p.visible=true);
-  annexStair.visible = false;
-  camAngleY = 0.7; camAngleX = 0.45; camDist = 75; camTarget.set(0,6,-3);
+  camAngleY = 0.7; camAngleX = 0.45; camDist = 90; camTarget.set(0,6,0);
 };
 function applyInteriorVisibility(){
   exteriorGroup.visible = true;
   interiorGroup.visible = true;
   roofPieces.forEach(p=>p.visible=false);
   leftWallMesh.visible = false;
-  annexLeftWall.visible = false;
   leftWallDoors.forEach(d=>d.visible=false); // no wall there, so no doors either
   frontWallMesh.visible = true;
   backWallMesh.visible = false; // wall at the back of the church removed for Interior
@@ -1069,13 +1155,12 @@ function applyInteriorVisibility(){
   wallPillars.forEach(p=>p.visible=false);
   gallerySupportsBack.forEach(p=>p.visible=false); // wall is visible on this side, pillar not needed
   gallerySupportsFar.forEach(p=>p.visible=false); // the 2 pillars at the far end should not show
-  annexStair.visible = true;
 }
 btnInt.onclick = ()=>{
   stopAutoTour();
   setActive(btnInt);
   applyInteriorVisibility();
-  camAngleY = 0.15; camAngleX = 0.55; camDist = 55; camTarget.set(0,4,10);
+  camAngleY = 0.15; camAngleX = 0.55; camDist = 70; camTarget.set(0,4,0);
 };
 function applyCutawayVisibility(){
   exteriorGroup.visible = true;
@@ -1085,43 +1170,39 @@ function applyCutawayVisibility(){
   doorGroup.visible = false;
   roofPieces.forEach(p=>p.visible=true);
   leftWallMesh.visible = true;
-  annexLeftWall.visible = true;
   leftWallDoors.forEach(d=>d.visible=true);
   wallPillars.forEach(p=>p.visible=true);
   wallPillars[0].visible = false;  // the 2 back-most pillars (one per side)
-  wallPillars[8].visible = false;
+  wallPillars[pillarCountPerSide].visible = false;
   gallerySupportsBack.forEach(p=>p.visible=true);
   gallerySupportsFar.forEach(p=>p.visible=true);
-  annexStair.visible = false;
 }
 function applyTopVisibility(){
   exteriorGroup.visible = true;
   interiorGroup.visible = true;
   roofPieces.forEach(p=>p.visible=false);
   leftWallMesh.visible = true;
-  annexLeftWall.visible = true;
   leftWallDoors.forEach(d=>d.visible=true);
   frontWallMesh.visible = true;
   backWallMesh.visible = false; // wall at the back (entrance end) removed for the floor plan
   doorGroup.visible = false;
   wallPillars.forEach(p=>p.visible=true);
   wallPillars[0].visible = false;  // the 2 back-most pillars (one per side)
-  wallPillars[8].visible = false;
+  wallPillars[pillarCountPerSide].visible = false;
   gallerySupportsBack.forEach(p=>p.visible=true);
   gallerySupportsFar.forEach(p=>p.visible=true);
-  annexStair.visible = false;
 }
 btnCut.onclick = ()=>{
   stopAutoTour();
   setActive(btnCut);
   applyCutawayVisibility();
-  camAngleY = 0.9; camAngleX = 0.35; camDist = 85; camTarget.set(0,6,0);
+  camAngleY = 0.9; camAngleX = 0.35; camDist = 100; camTarget.set(0,6,0);
 };
 btnTop.onclick = ()=>{
   stopAutoTour();
   setActive(btnTop);
   applyTopVisibility();
-  camAngleY = 0.001; camAngleX = 1.5; camDist = 70; camTarget.set(0,0,-3);
+  camAngleY = 0.001; camAngleX = 1.5; camDist = 90; camTarget.set(0,0,-1);
 };
 
 // restore front/back wall visibility when leaving cutaway (interior and top-down each
@@ -1145,8 +1226,8 @@ const TOUR_ORBIT_CYCLES = 2;
 const TOUR_ORBIT_MS = TOUR_ORBIT_PERIOD_MS * TOUR_ORBIT_CYCLES;
 const TOUR_TRANSITION_MS = 3200;  // ease between the interior orbit and floor plan
 const TOUR_HOLD_TOP_MS = 7000;    // pause on the floor plan before looping
-const TOUR_INTERIOR_POSE = { angleX: 0.4, dist: 60, target: new THREE.Vector3(0,5,4) };
-const TOUR_TOP_POSE      = { angleY: 0.001, angleX: 1.5, dist: 70, target: new THREE.Vector3(0,0,-3) };
+const TOUR_INTERIOR_POSE = { angleX: 0.4, dist: 75, target: new THREE.Vector3(0,5,0) };
+const TOUR_TOP_POSE      = { angleY: 0.001, angleX: 1.5, dist: 90, target: new THREE.Vector3(0,0,-1) };
 
 let tourPhase = 'orbit';       // 'orbit' | 'toTop' | 'holdTop' | 'toOrbit'
 let tourPhaseStart = 0;
