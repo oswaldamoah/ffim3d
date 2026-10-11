@@ -31,6 +31,7 @@ function Index() {
         title="Photorealistic 3D church model"
         className="h-full w-full border-0"
         allow="fullscreen"
+        onLoad={(e) => e.currentTarget.contentWindow?.focus()}
       />
     </main>
   );
